@@ -22,3 +22,6 @@ export function useAuth(): AuthContextValue {
 
 export const hasRole = (user: SessionUser | null, roles?: Role[]) =>
   !!user && (!roles || roles.includes(user.role))
+
+/** Màn "Tổ chức": chỉ ORG_ADMIN có tổ chức (team-sync 4.6: /stats/org/* yêu cầu orgId, còn lại nhận 403). */
+export const isOrgAdmin = (user: SessionUser | null) => user?.role === 'ORG_ADMIN' && !!user.orgId

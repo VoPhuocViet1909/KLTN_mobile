@@ -31,3 +31,9 @@ export function useMyDevices(userId: string | undefined): StatusEvent[] {
     [all, userId],
   )
 }
+
+/** Trạng thái mọi máy nhận được trong phòng của mình (ORG_ADMIN: cả tổ chức), khóa `userId:deviceId`. */
+export function useAllDevices(): StatusEvent[] {
+  const all = useContext(StatusContext)
+  return useMemo(() => Object.values(all), [all])
+}

@@ -1,10 +1,11 @@
 import { History as HistoryIcon } from 'lucide-react-native'
 import { useCallback, useMemo, useState } from 'react'
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useTopInset } from '@/components/topInset'
 import { useMyAlerts, useMySessions, type AlertItem, type SessionItem } from '@/api/alerts'
+import { AlertRow } from '@/components/AlertRow'
 import { Card, EmptyState, ErrorState, LoadingState, Segmented } from '@/components/ui'
-import { ALERT_LABEL, alertEndLabel, alertLabel, severityLabel, sessionEndLabel } from '@/lib/labels'
+import { ALERT_LABEL, sessionEndLabel } from '@/lib/labels'
 import { formatDateTime, formatDuration } from '@/lib/time'
 import { colors, fonts, radius, space, text } from '@/theme/tokens'
 
@@ -27,7 +28,7 @@ function sessionSeconds(s: SessionItem) {
 }
 
 export default function HistoryScreen() {
-  const insets = useSafeAreaInsets()
+  const topInset = useTopInset()
   const [tab, setTab] = useState<Tab>('alerts')
   const [days, setDays] = useState(7)
   const [type, setType] = useState<string | undefined>(undefined)
@@ -74,7 +75,7 @@ export default function HistoryScreen() {
   return (
     <FlatList<AlertItem | SessionItem>
       style={styles.list}
-      contentContainerStyle={[styles.content, { paddingTop: insets.top + space.lg }]}
+      contentContainerStyle={[styles.content, { paddingTop: topInset + space.lg }]}
       data={items}
       keyExtractor={(it, i) =>
         'alertType' in it ? `${it.sessionId}|${it.deviceId}|${it.alertType}|${it.startedAt}` : `${it.sessionId}|${it.deviceId}|${i}`
@@ -111,26 +112,6 @@ export default function HistoryScreen() {
       onEndReachedThreshold={0.4}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} colors={[colors.primary]} />}
     />
-  )
-}
-
-function AlertRow({ a }: { a: AlertItem }) {
-  return (
-    <View
-      style={styles.rowBody}
-      accessible
-      accessibilityLabel={`${alertLabel(a.alertType)}, ${formatDateTime(a.startedAt)}, thời lượng ${formatDuration(a.durationSec)}, ${a.open ? 'đang diễn ra' : alertEndLabel(a.endReason)}`}>
-      <View style={styles.rowTop}>
-        <Text style={[text.bodyStrong, styles.flex]}>{alertLabel(a.alertType)}</Text>
-        <Text style={styles.pill}>{a.open ? 'Đang diễn ra' : severityLabel(a.severity)}</Text>
-      </View>
-      <Text style={text.caption}>{formatDateTime(a.startedAt)}</Text>
-      <Text style={text.body}>
-        Kéo dài {formatDuration(a.durationSec)}
-        {a.repeatCount > 0 ? ` · nhắc lại ${a.repeatCount} lần` : ''}
-      </Text>
-      {!a.open && <Text style={text.caption}>{alertEndLabel(a.endReason)}</Text>}
-    </View>
   )
 }
 
