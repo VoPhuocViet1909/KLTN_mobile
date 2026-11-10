@@ -90,7 +90,43 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry?: ()
   )
 }
 
+/** Nhóm nút chọn một trong vài mục (khoảng thời gian, phân đoạn). Chạm tối thiểu 44px. */
+export function Segmented<T extends string | number>({
+  options,
+  value,
+  onChange,
+  label,
+}: {
+  options: { value: T; label: string }[]
+  value: T
+  onChange: (v: T) => void
+  label: string
+}) {
+  return (
+    <View accessibilityRole="tablist" accessibilityLabel={label} style={styles.segRow}>
+      {options.map((o) => {
+        const on = o.value === value
+        return (
+          <Pressable
+            key={String(o.value)}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: on }}
+            onPress={() => onChange(o.value)}
+            style={[styles.segItem, on && styles.segItemOn]}>
+            <Text style={[styles.segLabel, on && styles.segLabelOn]}>{o.label}</Text>
+          </Pressable>
+        )
+      })}
+    </View>
+  )
+}
+
 const styles = StyleSheet.create({
+  segRow: { flexDirection: 'row', backgroundColor: colors.muted, borderRadius: radius.control, padding: 3, gap: 3 },
+  segItem: { flex: 1, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: radius.control - 2, paddingHorizontal: space.sm },
+  segItemOn: { backgroundColor: colors.background },
+  segLabel: { fontFamily: fonts.medium, fontSize: 14, color: colors.mutedForeground, textAlign: 'center' },
+  segLabelOn: { color: colors.foreground },
   card: {
     backgroundColor: colors.background,
     borderColor: colors.border,

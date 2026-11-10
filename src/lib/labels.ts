@@ -17,6 +17,25 @@ export const ALERT_LABEL: Record<string, string> = {
 export const alertLabel = (type: string | null | undefined) =>
   type ? (ALERT_LABEL[type] ?? type) : '—'
 
+/** Mức độ cảnh báo: chỉ chữ, không dùng màu trạng thái. */
+export const SEVERITY_LABEL: Record<string, string> = { LOW: 'Thấp', MEDIUM: 'Vừa', HIGH: 'Cao' }
+export const severityLabel = (s: string | null | undefined) => (s ? (SEVERITY_LABEL[s] ?? s) : '—')
+
+/** Lý do một lần cảnh báo kết thúc. */
+export const ALERT_END_LABEL: Record<string, string> = {
+  CORRECTED: 'Đã ngồi lại đúng',
+  SESSION_END: 'Phiên kết thúc',
+  SESSION_TIMEOUT: 'Phiên tự đóng',
+}
+export const alertEndLabel = (r: string | null | undefined) => (r ? (ALERT_END_LABEL[r] ?? r) : '—')
+
+/** Lý do một phiên làm việc kết thúc. */
+export const SESSION_END_LABEL: Record<string, string> = {
+  SESSION_END: 'Tắt ứng dụng',
+  TIMEOUT: 'Tự đóng sau 3 phút không có dữ liệu',
+}
+export const sessionEndLabel = (r: string | null | undefined) => (r ? (SESSION_END_LABEL[r] ?? r) : '—')
+
 /**
  * Trạng thái thiết bị. Màu KHÔNG được đứng một mình: luôn đi cùng icon + label
  * (đỏ/lục khó phân biệt với người mù màu).
