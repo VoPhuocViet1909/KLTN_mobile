@@ -1,7 +1,8 @@
 import { Tabs } from 'expo-router'
 import type { ColorValue } from 'react-native'
 import { Building2, ChartLine, History, House, Settings, type LucideIcon } from 'lucide-react-native'
-import { useAuth } from '@/auth/context'
+import { isOrgAdmin, useAuth } from '@/auth/context'
+import { NotificationProvider } from '@/notifications/NotificationProvider'
 import { StatusProvider } from '@/realtime/StatusProvider'
 import { colors, fonts } from '@/theme/tokens'
 
@@ -11,11 +12,11 @@ const icon =
 
 export default function TabsLayout() {
   const { user } = useAuth()
-  // Tab "Tổ chức" chỉ dành cho ORG_ADMIN có tổ chức (team-sync 4.6: /stats/org/* yêu cầu orgId).
-  const showOrg = user?.role === 'ORG_ADMIN' && !!user.orgId
+  const showOrg = isOrgAdmin(user)
 
   return (
     <StatusProvider>
+      <NotificationProvider>
       <Tabs
         screenOptions={{
           headerShown: false,
@@ -33,6 +34,7 @@ export default function TabsLayout() {
         />
         <Tabs.Screen name="settings" options={{ title: 'Cài đặt', tabBarIcon: icon(Settings) }} />
       </Tabs>
+      </NotificationProvider>
     </StatusProvider>
   )
 }

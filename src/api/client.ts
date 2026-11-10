@@ -1,6 +1,7 @@
 // Chép từ GIT_frontend/src/lib/api/client.ts (commit 9d5677d), giữ đồng bộ khi web đổi.
 // Khác web: baseURL tuyệt đối từ EXPO_PUBLIC_API_URL; token lưu SecureStore; không có media/WHEP.
 import axios, { type AxiosRequestConfig, type InternalAxiosRequestConfig } from 'axios'
+import { connectivity } from '@/lib/connectivity'
 import { MSG_ORG_INACTIVE, MSG_SESSION_ENDED, ORGANIZATION_INACTIVE, toApiError } from '@/lib/errors'
 import type { TokenPair } from '@/lib/types'
 import { API_BASE } from './env'
@@ -80,8 +81,13 @@ export function refreshAccessToken(): Promise<string> {
 type RetriableConfig = InternalAxiosRequestConfig & { _retried?: boolean }
 
 api.interceptors.response.use(
-  (res) => res,
+  (res) => {
+    connectivity.report(true)
+    return res
+  },
   async (error) => {
+    // Không có response = lỗi mạng/hết thời gian: bật banner "Mất kết nối máy chủ". Có response thì máy chủ còn đó.
+    if (axios.isAxiosError(error) && !axios.isCancel(error)) connectivity.report(!!error.response)
     const config = error.config as RetriableConfig | undefined
     const status = error.response?.status
     if (status === 401 && config && !config._retried && !isOpen(config.url)) {

@@ -38,8 +38,20 @@ backend để có tài khoản thử; **email và mật khẩu demo nằm ở `A
 | Hôm nay | xong: trạng thái realtime (GOOD/BAD/AWAY/OFFLINE) + số liệu hôm nay |
 | Lịch sử | xong: cảnh báo + phiên làm việc, 7/30/92 ngày, lọc loại, cuộn vô hạn |
 | Thống kê | xong: điểm theo ngày, phút ngồi sai, heatmap thói quen 1/4/12 tuần |
-| Tổ chức (ORG_ADMIN) | tạm "Sắp có" |
-| Cài đặt | xong: form cấu hình cá nhân (kế thừa tổ chức) + tài khoản + đăng xuất |
+| Tổ chức (ORG_ADMIN) | xong: ai đang ngồi sai (realtime), tổng quan 7/30 ngày, xu hướng, danh sách nhân viên → cảnh báo của từng người. Role khác không thấy tab; mở link trực tiếp thì hiện màn 403 |
+| Cài đặt | xong: tài khoản, công tắc thông báo, form cấu hình cá nhân (kế thừa tổ chức), đăng xuất |
+
+## Thông báo trên điện thoại
+
+Khi trạng thái **của chính bạn** chuyển sang BAD (Socket.IO `status`), app hiện thông báo cục bộ "Bạn đang <nhãn cảnh báo>"
+bằng `expo-notifications` (chạy được trong Expo Go). Không quá 1 thông báo cho mỗi loại cảnh báo trong 5 phút. Lần đầu vào app có hộp
+thoại giải thích rồi mới xin quyền; công tắc "Thông báo khi ngồi sai" ở tab Cài đặt (tùy chọn của máy này, lưu SecureStore,
+không gửi lên config-service).
+
+**Giới hạn:** chỉ nhận khi app đang mở hoặc vừa chuyển sang nền (hệ điều hành tạm dừng kết nối sau ít phút). **Tắt hẳn app thì không nhận.**
+Push từ server khi app tắt hẳn cần bản build riêng (Expo Go không nhận push từ SDK 53); chưa làm.
+
+Khi gọi API lỗi mạng, đầu màn hình hiện banner "Mất kết nối máy chủ"; app tự hỏi `/health` mỗi 15 giây và tự tắt banner khi có mạng.
 
 ## Kiểm tra
 
@@ -61,12 +73,22 @@ node dev/check-backend.mjs
 Script chạy: login → refresh (token cũ phải bị từ chối) → `/auth/me` → `/stats/me/summary` → kết nối Socket.IO bằng WebSocket,
 **không gửi header Origin** (giống app native) → logout.
 
+Kiểm màn Tổ chức với backend thật (tự tạo 2 tổ chức + nhân viên thử, bơm dữ liệu bằng `replay.py`, rồi khóa; cần tài khoản SYS_ADMIN và `python`):
+
+```
+set ADMIN_EMAIL=...   set ADMIN_PASSWORD=...        (SYS_ADMIN, xem AUTH_SEED_ADMIN_* trong .env backend)
+node dev/check-org.mjs
+```
+
+Kiểm luật debounce thông báo (logic thuần): `node --experimental-strip-types dev/check-notify-rules.mjs`
+
 ## Cấu trúc
 
 ```
-src/app/        route (Expo Router): login, (tabs)/index|history|stats|org|settings
-src/api/        axios client (refresh một lần), tokenStore (SecureStore), auth, stats
+src/app/        route (Expo Router): login, (tabs)/index|history|stats|org|settings, member/[userId]
+src/api/        axios client (refresh một lần), tokenStore (SecureStore), auth, stats, alerts, config, org, users
 src/realtime/   socket.io, hooks, StatusProvider (giữ trạng thái `status` qua các tab)
+src/notifications/  thông báo cục bộ: rules (debounce), prefs (SecureStore), NotificationProvider
 src/lib/        types, errors, labels, time – chép từ GIT_frontend/src/lib (dòng đầu mỗi file ghi nguồn)
 src/components/ Card, Button, StatusBadge, Screen, các trạng thái loading/rỗng/lỗi
 src/theme/      tokens.ts (màu, chữ, khoảng cách)
@@ -80,6 +102,8 @@ File chép từ web ghi nguồn ở dòng đầu (`GIT_frontend`, commit `9d5677
 - Chưa kiểm trên iPhone/Android thật (chỉ kiểm tĩnh, build bundle và gọi API/Socket.IO bằng script).
 - Giao diện sáng duy nhất (design system chưa có bảng màu tối được nghiệm thu).
 - Push khi app tắt hẳn chưa có (Expo Go từ SDK 53 không nhận push từ server); xem kế hoạch Prompt 4.
+- Chưa kiểm thông báo, chuyển nền/foreground, cỡ chữ lớn trên máy thật.
+- Trong Expo Go trên Android, import `expo-notifications` có thể in cảnh báo về push từ xa; thông báo cục bộ vẫn chạy.
 
 Kiểm số liệu các màn Lịch sử / Thống kê / Cấu hình với backend thật (cần dữ liệu mẫu từ `replay.py`; script lưu rồi khôi phục cấu hình cá nhân):
 
