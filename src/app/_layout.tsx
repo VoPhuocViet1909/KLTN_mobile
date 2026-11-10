@@ -10,9 +10,11 @@ import { Stack } from 'expo-router'
 import * as SplashScreen from 'expo-splash-screen'
 import { StatusBar } from 'expo-status-bar'
 import { useEffect, useState } from 'react'
+import { View } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { AuthProvider } from '@/auth/AuthProvider'
 import { useAuth } from '@/auth/context'
+import { ConnectionBanner } from '@/components/ConnectionBanner'
 import { ApiError } from '@/lib/errors'
 
 SplashScreen.preventAutoHideAsync()
@@ -46,14 +48,18 @@ function Routes() {
   if (!ready) return null
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Protected guard={status === 'authenticated'}>
-        <Stack.Screen name="(tabs)" />
-      </Stack.Protected>
-      <Stack.Protected guard={status === 'anonymous'}>
-        <Stack.Screen name="login" />
-      </Stack.Protected>
-    </Stack>
+    <View style={{ flex: 1 }}>
+      <ConnectionBanner />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Protected guard={status === 'authenticated'}>
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="member/[userId]" />
+        </Stack.Protected>
+        <Stack.Protected guard={status === 'anonymous'}>
+          <Stack.Screen name="login" />
+        </Stack.Protected>
+      </Stack>
+    </View>
   )
 }
 

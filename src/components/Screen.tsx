@@ -1,6 +1,6 @@
 import { useCallback, useState, type ReactNode } from 'react'
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useTopInset } from '@/components/topInset'
 import { colors, space, text } from '@/theme/tokens'
 
 /**
@@ -18,7 +18,7 @@ export function Screen({
   onRefresh?: () => Promise<unknown>
   children: ReactNode
 }) {
-  const insets = useSafeAreaInsets()
+  const topInset = useTopInset()
   const [refreshing, setRefreshing] = useState(false)
   const refresh = useCallback(async () => {
     if (!onRefresh) return
@@ -33,7 +33,7 @@ export function Screen({
   return (
     <ScrollView
       style={styles.scroll}
-      contentContainerStyle={[styles.content, { paddingTop: insets.top + space.lg }]}
+      contentContainerStyle={[styles.content, { paddingTop: topInset + space.lg }]}
       refreshControl={
         onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} colors={[colors.primary]} /> : undefined
       }
