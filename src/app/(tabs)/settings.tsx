@@ -1,9 +1,9 @@
-import { LogOut } from 'lucide-react-native'
 import { useState } from 'react'
 import { Alert, StyleSheet, Text, View } from 'react-native'
 import { useConfigRealtime, useMyConfigDetails, useSaveMyConfig } from '@/api/config'
 import { useAuth } from '@/auth/context'
 import { ConfigForm } from '@/components/ConfigForm'
+import { NotificationSettings } from '@/components/NotificationSettings'
 import { Screen } from '@/components/Screen'
 import { Button, Card, SectionTitle } from '@/components/ui'
 import { roleLabel } from '@/lib/labels'
@@ -38,6 +38,7 @@ export default function SettingsScreen() {
         <Row label="Email" value={user?.email || '—'} />
         <Row label="Vai trò" value={roleLabel(user?.role)} />
       </Card>
+      <NotificationSettings />
       <SectionTitle>Cấu hình cá nhân</SectionTitle>
       <ConfigForm
         personal={config.data?.personal}
@@ -48,10 +49,6 @@ export default function SettingsScreen() {
         save={save}
       />
       <Button label="Đăng xuất" variant="outline" onPress={confirmLogout} loading={busy} />
-      <View style={styles.hint}>
-        <LogOut size={14} color={colors.mutedForeground} />
-        <Text style={text.caption}>Thông báo trên điện thoại sẽ có ở bản cập nhật sau.</Text>
-      </View>
     </Screen>
   )
 }
