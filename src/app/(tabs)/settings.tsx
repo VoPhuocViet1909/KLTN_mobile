@@ -1,7 +1,9 @@
 import { LogOut } from 'lucide-react-native'
 import { useState } from 'react'
 import { Alert, StyleSheet, Text, View } from 'react-native'
+import { useConfigRealtime, useMyConfigDetails, useSaveMyConfig } from '@/api/config'
 import { useAuth } from '@/auth/context'
+import { ConfigForm } from '@/components/ConfigForm'
 import { Screen } from '@/components/Screen'
 import { Button, Card, SectionTitle } from '@/components/ui'
 import { roleLabel } from '@/lib/labels'
@@ -10,6 +12,9 @@ import { colors, space, text } from '@/theme/tokens'
 export default function SettingsScreen() {
   const { user, logout } = useAuth()
   const [busy, setBusy] = useState(false)
+  useConfigRealtime()
+  const config = useMyConfigDetails()
+  const save = useSaveMyConfig()
 
   function confirmLogout() {
     Alert.alert('Đăng xuất', 'Bạn sẽ cần đăng nhập lại để xem số liệu.', [
@@ -33,10 +38,19 @@ export default function SettingsScreen() {
         <Row label="Email" value={user?.email || '—'} />
         <Row label="Vai trò" value={roleLabel(user?.role)} />
       </Card>
+      <SectionTitle>Cấu hình cá nhân</SectionTitle>
+      <ConfigForm
+        personal={config.data?.personal}
+        organization={config.data?.organization}
+        error={config.error}
+        isPending={config.isPending}
+        onRetry={() => config.refetch()}
+        save={save}
+      />
       <Button label="Đăng xuất" variant="outline" onPress={confirmLogout} loading={busy} />
       <View style={styles.hint}>
         <LogOut size={14} color={colors.mutedForeground} />
-        <Text style={text.caption}>Cấu hình cá nhân và thông báo sẽ có ở bản cập nhật sau.</Text>
+        <Text style={text.caption}>Thông báo trên điện thoại sẽ có ở bản cập nhật sau.</Text>
       </View>
     </Screen>
   )

@@ -36,8 +36,10 @@ backend để có tài khoản thử; **email và mật khẩu demo nằm ở `A
 | --- | --- |
 | Đăng nhập | xong: lỗi tiếng Việt, hiện/ẩn mật khẩu, tự vào lại khi còn refresh token |
 | Hôm nay | xong: trạng thái realtime (GOOD/BAD/AWAY/OFFLINE) + số liệu hôm nay |
-| Lịch sử, Thống kê, Tổ chức (ORG_ADMIN) | tạm "Sắp có" |
-| Cài đặt | tạm: thông tin tài khoản + đăng xuất |
+| Lịch sử | xong: cảnh báo + phiên làm việc, 7/30/92 ngày, lọc loại, cuộn vô hạn |
+| Thống kê | xong: điểm theo ngày, phút ngồi sai, heatmap thói quen 1/4/12 tuần |
+| Tổ chức (ORG_ADMIN) | tạm "Sắp có" |
+| Cài đặt | xong: form cấu hình cá nhân (kế thừa tổ chức) + tài khoản + đăng xuất |
 
 ## Kiểm tra
 
@@ -78,3 +80,9 @@ File chép từ web ghi nguồn ở dòng đầu (`GIT_frontend`, commit `9d5677
 - Chưa kiểm trên iPhone/Android thật (chỉ kiểm tĩnh, build bundle và gọi API/Socket.IO bằng script).
 - Giao diện sáng duy nhất (design system chưa có bảng màu tối được nghiệm thu).
 - Push khi app tắt hẳn chưa có (Expo Go từ SDK 53 không nhận push từ server); xem kế hoạch Prompt 4.
+
+Kiểm số liệu các màn Lịch sử / Thống kê / Cấu hình với backend thật (cần dữ liệu mẫu từ `replay.py`; script lưu rồi khôi phục cấu hình cá nhân):
+
+```
+node dev/check-data.mjs
+```
