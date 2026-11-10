@@ -82,7 +82,7 @@ export function ConfigForm({ personal, organization, error, isPending, onRetry, 
         if (err.code === 'VALIDATION_FAILED' && Object.keys(err.fieldErrors).length > 0) {
           for (const [field, message] of Object.entries(err.fieldErrors)) {
             const key = field.split('.').pop() ?? field
-            if (key in FIELD_BY_KEY) mapped[key] = message
+            if (key in FIELD_BY_KEY) mapped[key] = translateFieldError(FIELD_BY_KEY[key], message)
             else general = `${key}: ${message}`
           }
         } else {
@@ -243,6 +243,17 @@ function Field({
       ) : null}
     </View>
   )
+}
+
+/** Backend trả lỗi tiếng Anh (vd "must be between 1 and 120"): dịch theo min/max của trường; câu lạ thì giữ nguyên. */
+export function translateFieldError(f: ConfigField, message: string) {
+  const unit = f.unit ? ` ${f.unit}` : ''
+  if (/between/i.test(message) && f.min !== undefined && f.max !== undefined) return `Phải từ ${f.min} đến ${f.max}${unit}.`
+  if (/(greater|at least|minimum)/i.test(message) && f.min !== undefined) return `Không nhỏ hơn ${f.min}${unit}.`
+  if (/(less|at most|maximum)/i.test(message) && f.max !== undefined) return `Không lớn hơn ${f.max}${unit}.`
+  if (/integer/i.test(message)) return 'Phải là số nguyên.'
+  if (/(number|numeric|valid)/i.test(message)) return 'Phải là một số hợp lệ.'
+  return message
 }
 
 function formatInherited(f: ConfigField, v: ConfigValues[string]) {
