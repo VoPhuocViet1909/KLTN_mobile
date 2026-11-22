@@ -9,7 +9,7 @@ import { alertLabel } from '@/lib/labels'
 import { useRealtimeEvent } from '@/realtime/hooks'
 import type { StatusEvent } from '@/realtime/socket'
 import { loadPrefs, saveAsked, saveEnabled } from './prefs'
-import { evaluateStatus, newNotifyState } from './rules'
+import { explainStatus, newNotifyState } from './rules'
 
 const CHANNEL_ID = 'posture-alerts'
 
@@ -51,7 +51,18 @@ async function readPermission(): Promise<Permission> {
   }
 }
 
+/** Chẩn đoán tạm (E2E 22/11/2026): app có nhận `status` không và vì sao báo / không báo. Chỉ hiện khi __DEV__. */
+export interface NotifyDebug {
+  received: number
+  lastStatus: string
+  lastDecision: string
+  lastError: string
+}
+
 interface NotificationContextValue {
+  debug: NotifyDebug
+  /** Gửi ngay một thông báo thử để kiểm quyền của hệ điều hành (chỉ dùng khi __DEV__). */
+  sendTest: () => Promise<string>
   /** Công tắc "Thông báo khi ngồi sai" (tùy chọn của máy này). */
   enabled: boolean
   permission: Permission
@@ -93,6 +104,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const [permission, setPermission] = useState<Permission>('undetermined')
   const [ready, setReady] = useState(false)
   const state = useRef(newNotifyState())
+  const [debug, setDebug] = useState<NotifyDebug>({ received: 0, lastStatus: '(chưa nhận gói status nào)', lastDecision: '-', lastError: '-' })
   const mine = useRef(user?.id)
   mine.current = user?.id
 
@@ -169,10 +181,33 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const enabledRef = useRef(enabled)
   enabledRef.current = enabled
 
+  const sendTest = useCallback(async () => {
+    try {
+      await Notifications.scheduleNotificationAsync({
+        content: { title: 'Thông báo thử', body: 'Nếu bạn thấy dòng này thì quyền thông báo hoạt động.' },
+        trigger: Platform.OS === 'android' ? { channelId: CHANNEL_ID } : null,
+      })
+      return 'đã gửi, nhìn lên đầu màn hình'
+    } catch (err) {
+      return `lỗi: ${err instanceof Error ? err.message : String(err)}`
+    }
+  }, [])
+
   useRealtimeEvent<StatusEvent>('status', (e) => {
+    if (__DEV__) {
+      const own = e.userId === mine.current
+      setDebug((d) => ({
+        ...d,
+        received: d.received + 1,
+        lastStatus: `${e.state}${e.alertType ? ' ' + e.alertType : ''} lúc ${e.ts}${own ? '' : ' (KHÔNG phải của tôi: userId khác)'}`,
+      }))
+    }
     if (e.userId !== mine.current) return
     // Luôn chạy luật để `lastState` đúng kể cả khi công tắc tắt (bật lên không báo lại trạng thái cũ).
-    const type = evaluateStatus(state.current, e, Date.now())
+    const { type, reason } = explainStatus(state.current, e, Date.now())
+    if (__DEV__) {
+      setDebug((d) => ({ ...d, lastDecision: type && !enabledRef.current ? `${reason} NHƯNG công tắc đang TẮT nên không hiện` : reason }))
+    }
     if (!type || !enabledRef.current) return
     void Notifications.scheduleNotificationAsync({
       content: {
@@ -181,11 +216,12 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         data: { alertType: type },
       },
       trigger: Platform.OS === 'android' ? { channelId: CHANNEL_ID } : null,
-    }).catch(() => {
+    }).catch((err: unknown) => {
       /* không hiện được thông báo (quyền bị thu hồi): bỏ qua, màn Hôm nay vẫn có trạng thái */
+      if (__DEV__) setDebug((d) => ({ ...d, lastError: err instanceof Error ? err.message : String(err) }))
     })
   })
 
-  const value = useMemo(() => ({ enabled, permission, ready, setEnabled }), [enabled, permission, ready, setEnabled])
+  const value = useMemo(() => ({ enabled, permission, ready, setEnabled, debug, sendTest }), [enabled, permission, ready, setEnabled, debug, sendTest])
   return <NotificationContext.Provider value={value}>{children}</NotificationContext.Provider>
 }
