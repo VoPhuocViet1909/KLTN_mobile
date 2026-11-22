@@ -54,6 +54,7 @@ function Routes() {
         <Stack.Protected guard={status === 'authenticated'}>
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="member/[userId]" />
+          <Stack.Screen name="health-risks" />
         </Stack.Protected>
         <Stack.Protected guard={status === 'anonymous'}>
           <Stack.Screen name="login" />
