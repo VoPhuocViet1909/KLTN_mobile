@@ -2,6 +2,7 @@ import { Moon } from 'lucide-react-native'
 import { StyleSheet, Text, View } from 'react-native'
 import { sumAlerts, useTodaySummary } from '@/api/stats'
 import { useAuth } from '@/auth/context'
+import { HealthRiskCard } from '@/components/HealthRiskCard'
 import { Screen } from '@/components/Screen'
 import { StatusBadge } from '@/components/StatusBadge'
 import { Card, EmptyState, ErrorState, Fact, LoadingState, SectionTitle } from '@/components/ui'
@@ -49,6 +50,8 @@ export default function TodayScreen() {
           />
         )}
       </Card>
+
+      <HealthRiskCard />
 
       <Card>
         <SectionTitle>Số liệu hôm nay</SectionTitle>
