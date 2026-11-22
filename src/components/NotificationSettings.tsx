@@ -1,12 +1,13 @@
 import { useState } from 'react'
-import { StyleSheet, Switch, Text, View } from 'react-native'
+import { Button, StyleSheet, Switch, Text, View } from 'react-native'
 import { useNotificationSettings } from '@/notifications/NotificationProvider'
 import { colors, space, text } from '@/theme/tokens'
 import { Card, SectionTitle } from './ui'
 
 /** Công tắc thông báo cục bộ. Tùy chọn của máy này, không gửi lên config-service. */
 export function NotificationSettings() {
-  const { enabled, permission, ready, setEnabled } = useNotificationSettings()
+  const { enabled, permission, ready, setEnabled, debug, sendTest } = useNotificationSettings()
+  const [testResult, setTestResult] = useState('')
   const [busy, setBusy] = useState(false)
 
   async function toggle(on: boolean) {
@@ -44,6 +45,19 @@ export function NotificationSettings() {
       <Text style={text.caption}>
         Chỉ nhận được khi ứng dụng đang mở hoặc vừa chuyển sang nền. Tắt hẳn ứng dụng thì không nhận được thông báo.
       </Text>
+      {__DEV__ ? (
+        <View style={styles.debug}>
+          <Text style={text.bodyStrong}>Chẩn đoán (tạm, chỉ khi dev)</Text>
+          <Text style={text.caption}>Quyền hệ điều hành: {permission}</Text>
+          <Text style={text.caption}>Công tắc: {enabled ? 'BẬT' : 'TẮT'}{ready ? '' : ' (đang tải)'}</Text>
+          <Text style={text.caption}>Số gói status đã nhận: {debug.received}</Text>
+          <Text style={text.caption}>Gói gần nhất: {debug.lastStatus}</Text>
+          <Text style={text.caption}>Quyết định: {debug.lastDecision}</Text>
+          <Text style={text.caption}>Lỗi hiện thông báo: {debug.lastError}</Text>
+          <Button title="Gửi thông báo thử" onPress={() => void sendTest().then(setTestResult)} />
+          {testResult ? <Text style={text.caption}>Kết quả: {testResult}</Text> : null}
+        </View>
+      ) : null}
     </Card>
   )
 }
@@ -51,4 +65,5 @@ export function NotificationSettings() {
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: 48 },
   texts: { flex: 1, gap: 2 },
+  debug: { gap: 2, borderTopWidth: 1, borderTopColor: colors.input, paddingTop: space.sm },
 })

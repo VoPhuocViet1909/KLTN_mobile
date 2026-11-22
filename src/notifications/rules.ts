@@ -23,14 +23,24 @@ export const newNotifyState = (): NotifyState => ({ lastState: new Map(), lastSh
  * gói còn mới, và loại đó chưa được báo trong DEBOUNCE_MS. Luôn cập nhật `lastState`; chỉ cập nhật `lastShown` khi báo.
  */
 export function evaluateStatus(st: NotifyState, e: StatusEvent, now: number): string | null {
+  return explainStatus(st, e, now).type
+}
+
+/** Như evaluateStatus nhưng kèm lý do bằng chữ (dùng cho khối chẩn đoán trong Cài đặt khi chạy dev). */
+export function explainStatus(st: NotifyState, e: StatusEvent, now: number): { type: string | null; reason: string } {
   const prev = st.lastState.get(e.deviceId)
   st.lastState.set(e.deviceId, e.state)
-  if (e.state !== 'BAD' || prev === 'BAD') return null
+  if (e.state !== 'BAD') return { type: null, reason: `không báo: trạng thái ${e.state}, không phải BAD` }
+  if (prev === 'BAD') return { type: null, reason: 'không báo: đã BAD từ trước (chỉ báo lúc chuyển sang BAD)' }
   const ts = Date.parse(e.ts)
-  if (Number.isFinite(ts) && now - ts > FRESH_MS) return null
+  if (Number.isFinite(ts) && now - ts > FRESH_MS) {
+    return { type: null, reason: `không báo: gói cũ ${Math.round((now - ts) / 1000)} giây (quá ${FRESH_MS / 1000} giây)` }
+  }
   const type = e.alertType ?? 'UNKNOWN'
   const last = st.lastShown.get(type)
-  if (last !== undefined && now - last < DEBOUNCE_MS) return null
+  if (last !== undefined && now - last < DEBOUNCE_MS) {
+    return { type: null, reason: `không báo: ${type} vừa báo cách đây ${Math.round((now - last) / 1000)} giây (< ${DEBOUNCE_MS / 1000})` }
+  }
   st.lastShown.set(type, now)
-  return type
+  return { type, reason: `BÁO ${type}` }
 }

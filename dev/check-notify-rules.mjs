@@ -1,7 +1,7 @@
 // Kiểm luật thông báo cục bộ (src/notifications/rules.ts), logic thuần nên chạy được bằng Node:
 //   node --experimental-strip-types dev/check-notify-rules.mjs
 import assert from 'node:assert/strict'
-import { DEBOUNCE_MS, FRESH_MS, evaluateStatus, newNotifyState } from '../src/notifications/rules.ts'
+import { DEBOUNCE_MS, FRESH_MS, evaluateStatus, explainStatus, newNotifyState } from '../src/notifications/rules.ts'
 
 const T0 = Date.parse('2026-11-11T08:00:00Z')
 const ev = (state, alertType, atMs, deviceId = 'd1') => ({ userId: 'u', deviceId, state, alertType, ts: new Date(atMs).toISOString() })
@@ -46,5 +46,15 @@ ok('hai máy độc lập theo deviceId', () => {
 ok('alertType null vẫn báo (loại UNKNOWN)', () => {
   const st = newNotifyState()
   assert.equal(evaluateStatus(st, ev('BAD', null, T0), T0), 'UNKNOWN')
+})
+ok('explainStatus nêu lý do và cùng kết quả với evaluateStatus', () => {
+  const st = newNotifyState()
+  assert.match(explainStatus(st, ev('GOOD', null, T0), T0).reason, /không phải BAD/)
+  assert.deepEqual(explainStatus(st, ev('BAD', 'TOO_CLOSE', T0 + 1000), T0 + 1000), { type: 'TOO_CLOSE', reason: 'BÁO TOO_CLOSE' })
+  assert.match(explainStatus(st, ev('BAD', 'TOO_CLOSE', T0 + 2000), T0 + 2000).reason, /đã BAD từ trước/)
+  explainStatus(st, ev('GOOD', null, T0 + 3000), T0 + 3000)
+  assert.match(explainStatus(st, ev('BAD', 'TOO_CLOSE', T0 + 4000), T0 + 4000).reason, /vừa báo cách đây/)
+  const old = newNotifyState()
+  assert.match(explainStatus(old, ev('BAD', 'NECK_TRUNK', T0 - FRESH_MS - 5000), T0).reason, /gói cũ/)
 })
 console.log(`\n${n} đạt`)
