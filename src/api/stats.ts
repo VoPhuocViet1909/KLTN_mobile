@@ -1,5 +1,6 @@
 // Dựa trên GIT_frontend/src/lib/api/stats.ts (commit 9d5677d), giữ đồng bộ khi web đổi.
 import { useQuery } from '@tanstack/react-query'
+import type { ClassDistribution } from '@/lib/postureClass'
 import { lastDays, vnToday } from '@/lib/time'
 import { request } from './client'
 
@@ -54,5 +55,17 @@ export function useMyHeatmap(weeks: number) {
   return useQuery({
     queryKey: ['stats', 'me', 'heatmap', weeks],
     queryFn: () => request<HeatmapCell[]>({ url: '/stats/me/heatmap', params: { weeks } }),
+  })
+}
+
+/**
+ * Số giây theo lớp tư thế (model v4) theo ngày hoặc tuần (giờ Việt Nam). Client/model cũ không gửi lớp thì
+ * `classSec` < `presenceSec`; không có dữ liệu lớp thì `classSec` = 0.
+ */
+export function useMyPostureClasses(days: number, bucket: 'day' | 'week') {
+  return useQuery({
+    queryKey: ['stats', 'me', 'posture-classes', days, bucket],
+    queryFn: () =>
+      request<ClassDistribution>({ url: '/stats/me/posture-classes', params: { ...lastDays(days), bucket } }),
   })
 }

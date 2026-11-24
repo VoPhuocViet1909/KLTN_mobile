@@ -39,6 +39,11 @@ export function HealthRiskCard() {
                 Mức {LEVEL_LABEL[top.level].toLowerCase()} · bằng chứng {EVIDENCE_LABEL[top.evidence]}
               </Text>
             ) : null}
+            {elevated && top.postureClasses?.top ? (
+              <Text style={text.caption}>
+                Tư thế đóng góp nhiều nhất: {top.postureClasses.top.label} ({Math.round(top.postureClasses.top.share * 100)}%)
+              </Text>
+            ) : null}
           </View>
         </View>
         <Text style={text.caption}>{DISCLAIMER}</Text>

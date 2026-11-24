@@ -4,6 +4,7 @@ import { useMyHeatmap, useMyTimeseries, type HeatmapCell } from '@/api/stats'
 import { BadMinutesBars, DayDetail, fillDays, ScoreLine } from '@/components/charts/ScoreTrend'
 import { HabitHeatmap } from '@/components/charts/HabitHeatmap'
 import { hourRange, WEEKDAY_LABEL } from '@/components/charts/heatmapScale'
+import { PostureClassCard } from '@/components/PostureClassCard'
 import { Screen } from '@/components/Screen'
 import { Card, EmptyState, ErrorState, LoadingState, Segmented, SectionTitle } from '@/components/ui'
 import { space, text } from '@/theme/tokens'
@@ -68,6 +69,8 @@ export default function StatsScreen() {
           <BadMinutesBars points={points} onSelect={setPicked} />
         </Card>
       )}
+
+      <PostureClassCard />
 
       <SectionTitle>Thói quen</SectionTitle>
       <Segmented label="Khoảng thời gian thói quen" options={WEEK_RANGES} value={weeks} onChange={setWeeks} />

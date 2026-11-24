@@ -4,6 +4,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { DISCLAIMER, barPercent, formatIndicator, noteLabel, sortRisks, sourceHref } from '../src/lib/healthRisk.ts'
+import { CLASS_LABEL, POSTURE_CLASSES, STACK_ORDER, chartRows, classCoverage, classShares, isPostureClass, topBadClass } from '../src/lib/postureClass.ts'
 
 function apiUrl() {
   if (process.env.API_URL) return process.env.API_URL.replace(/\/+$/, '')
@@ -41,6 +42,26 @@ assert.equal(sourceHref({ doi: null, url: 'javascript:alert(1)' }), null)
 assert.match(noteLabel('no_api_key'), /Chưa bật AI/)
 check('hàm thuần của app (sắp xếp, định dạng, thanh chỉ số, liên kết an toàn)', true)
 
+
+// ---- hàm thuần của biểu đồ lớp tư thế
+const zero = () => Object.fromEntries(POSTURE_CLASSES.map((c) => [c, 0]))
+const secs = (o) => ({ ...zero(), ...o })
+assert.deepEqual([...POSTURE_CLASSES].sort(), [...STACK_ORDER].sort())
+assert.equal(CLASS_LABEL.SLOUCH, 'Gù lưng')
+assert.equal(isPostureClass('WEIRD'), false)
+const totalsDemo = secs({ GOOD: 600, SLOUCH: 300, FORWARD_HEAD: 100 })
+assert.equal(classShares(totalsDemo)[0].posture, 'SLOUCH')
+assert.equal(classShares(totalsDemo).at(-1).posture, 'GOOD')
+assert.equal(topBadClass(totalsDemo), 'SLOUCH')
+assert.equal(topBadClass(secs({ GOOD: 5 })), null)
+assert.deepEqual(classShares(zero()), [])
+const day = (d) => new Date(Date.UTC(2026, 10, d, 17)).toISOString()
+const rowsDemo = chartRows([{ start: day(14), seconds: secs({ GOOD: 120, SLOUCH: 60 }), presenceSec: 300 }], [day(13), day(14)])
+assert.equal(rowsDemo[0].minutes.GOOD, 0)
+assert.equal(rowsDemo[1].minutes.SLOUCH, 1)
+assert.equal(classCoverage({ classSec: 30, presenceSec: 60 }), 0.5)
+check('hàm thuần của biểu đồ lớp tư thế (phân bố, lớp xấu nổi bật, điền ngày trống, độ phủ)', true)
+
 // ---- API thật
 const login = await fetch(`${BASE}/auth/login`, {
   method: 'POST',
@@ -72,6 +93,28 @@ for (const period of ['7d', '30d']) {
   const top = sortRisks(b.risks)[0]
   console.log(`      cao nhất: ${top.risk.vi} — ${top.level}`)
 }
+
+
+// ---- lớp tư thế qua backend thật
+for (const bucket of ['day', 'week']) {
+  const r = await get(`/stats/me/posture-classes?bucket=${bucket}&from=${encodeURIComponent(new Date(Date.now() - 28 * 864e5).toISOString())}&to=${encodeURIComponent(new Date().toISOString())}`, token)
+  const b = r.body
+  check(`GET /stats/me/posture-classes?bucket=${bucket} 200, đủ 6 lớp, điểm khớp tổng`, r.status === 200 && b.bucket === bucket
+    && JSON.stringify(b.classes) === JSON.stringify(POSTURE_CLASSES) && POSTURE_CLASSES.every((c) => typeof b.totals[c] === 'number')
+    && b.points.every((p) => POSTURE_CLASSES.every((c) => typeof p.seconds[c] === 'number'))
+    && POSTURE_CLASSES.every((c) => Math.abs(b.points.reduce((a, p) => a + p.seconds[c], 0) - b.totals[c]) < 0.05),
+    `classSec ${Math.round(b.classSec ?? -1)} / presenceSec ${Math.round(b.presenceSec ?? -1)}, ${b.points?.length} điểm`)
+}
+const badBucket = await get('/stats/me/posture-classes?bucket=hour', token)
+check('bucket=hour -> 400 VALIDATION_FAILED', badBucket.status === 400 && badBucket.body?.code === 'VALIDATION_FAILED', String(badBucket.status))
+const anonClasses = await get('/stats/me/posture-classes')
+check('posture-classes không JWT -> 401', anonClasses.status === 401, String(anonClasses.status))
+const mine7 = (await get('/insights/me/health-risks?period=7d', token)).body
+const neck = mine7?.risks?.find((x) => x.kbId === 'HK-NECK-FHP')
+check('thẻ HK-NECK-FHP có postureClasses {available, classes, top}; có lớp thì top là một lớp hợp lệ', !!neck?.postureClasses
+  && typeof neck.postureClasses.available === 'boolean' && Array.isArray(neck.postureClasses.classes)
+  && (!neck.postureClasses.available || neck.postureClasses.top === null || isPostureClass(neck.postureClasses.top.posture)),
+  `available ${neck?.postureClasses?.available}, top ${neck?.postureClasses?.top?.posture ?? 'không'}`)
 
 const bad = await get('/insights/me/health-risks?period=1y', token)
 check('period=1y -> 400 VALIDATION_FAILED', bad.status === 400 && bad.body?.code === 'VALIDATION_FAILED', String(bad.status))
