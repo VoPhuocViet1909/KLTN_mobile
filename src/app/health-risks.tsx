@@ -3,13 +3,14 @@ import { ChevronLeft, ExternalLink, ShieldAlert } from 'lucide-react-native'
 import { useState } from 'react'
 import { Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useMyHealthRisks, type HealthRisk, type Indicator, type Period } from '@/api/insights'
+import { useMyHealthRisks, type ClassBreakdown, type HealthRisk, type Indicator, type Period } from '@/api/insights'
 import { useTopInset } from '@/components/topInset'
 import { Card, ErrorState, LoadingState, Segmented } from '@/components/ui'
 import {
   barPercent, citation, DISCLAIMER, EVIDENCE_LABEL, formatIndicator, formatThreshold, LEVEL_LABEL, noteLabel, sortRisks,
   sourceHref,
 } from '@/lib/healthRisk'
+import { CLASS_COLOR, isPostureClass } from '@/lib/postureClass'
 import { formatDateTime } from '@/lib/time'
 import { colors, radius, space, text } from '@/theme/tokens'
 
@@ -119,6 +120,41 @@ function IndicatorRow({ indicator }: { indicator: Indicator }) {
   )
 }
 
+function ClassContribution({ breakdown }: { breakdown: ClassBreakdown }) {
+  if (!breakdown.available || breakdown.classes.length === 0) {
+    return (
+      <View style={styles.block}>
+        <Text style={text.bodyStrong}>Lớp tư thế đóng góp</Text>
+        <Text style={text.caption}>
+          Chưa đủ dữ liệu lớp tư thế trong kỳ này (cần Desktop App bản mới); mức nguy cơ được tính từ các chỉ số khác.
+        </Text>
+      </View>
+    )
+  }
+  const top = breakdown.top
+  return (
+    <View style={styles.block}>
+      <Text style={text.bodyStrong}>Lớp tư thế đóng góp</Text>
+      <Text style={text.body}>
+        {top ? `Nhiều nhất: ${top.label} (${Math.round(top.share * 100)}% thời gian có mặt).` : 'Không có thời gian ngồi sai theo lớp trong kỳ này.'}
+      </Text>
+      {breakdown.classes.map((c) => (
+        <View key={c.posture} accessible accessibilityLabel={`${c.label}: ${Math.round(c.share * 100)}%`} style={styles.classRow}>
+          <Text style={[text.caption, styles.className]} numberOfLines={1}>{c.label}</Text>
+          <View style={styles.track}>
+            <View style={[styles.fill, { width: `${Math.max(c.share * 100, 1)}%`, backgroundColor: isPostureClass(c.posture) ? CLASS_COLOR[c.posture] : colors.primary }]} />
+          </View>
+          <Text style={[text.caption, styles.classValue]}>{Math.round(c.share * 100)}%</Text>
+        </View>
+      ))}
+      <Text style={text.caption}>
+        Chỉ lớp có nguồn nghiên cứu riêng ({breakdown.classes.filter((c) => c.usedInRules).map((c) => c.label).join(', ') || 'chưa có'}) mới được
+        dùng để tính mức nguy cơ; các lớp còn lại chỉ cho biết bạn ngồi sai theo kiểu nào.
+      </Text>
+    </View>
+  )
+}
+
 function RiskCard({ risk }: { risk: HealthRisk }) {
   const insufficient = risk.level === 'INSUFFICIENT_DATA'
   return (
@@ -140,6 +176,7 @@ function RiskCard({ risk }: { risk: HealthRisk }) {
           </Text>
         </View>
       ) : null}
+      {!insufficient && risk.postureClasses ? <ClassContribution breakdown={risk.postureClasses} /> : null}
       {!insufficient && risk.advice.length > 0 ? (
         <View style={styles.block}>
           <Text style={text.bodyStrong}>Lời khuyên</Text>
@@ -188,4 +225,7 @@ const styles = StyleSheet.create({
   track: { height: 8, borderRadius: 4, backgroundColor: colors.muted, overflow: 'hidden' },
   fill: { height: 8, borderRadius: 4, backgroundColor: colors.primary },
   source: { gap: 2, marginBottom: space.xs },
+  classRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  className: { width: 120 },
+  classValue: { width: 36, textAlign: 'right' },
 })

@@ -29,6 +29,22 @@ export interface Source {
   claim: string
 }
 
+/** Một lớp tư thế và phần thời gian có mặt (0..1); `usedInRules` = có nguồn riêng nên được dùng để tính mức nguy cơ. */
+export interface ClassShare {
+  posture: string
+  label: string
+  share: number
+  usedInRules: boolean
+}
+
+/** `available` = false khi kỳ này chưa đủ dữ liệu lớp (Desktop / model cũ); `top` = lớp xấu nhiều nhất hoặc null. */
+export interface ClassBreakdown {
+  available: boolean
+  coverage: number | null
+  classes: ClassShare[]
+  top: ClassShare | null
+}
+
 export interface HealthRisk {
   kbId: string
   factor: string
@@ -43,6 +59,8 @@ export interface HealthRisk {
   explanation: string | null
   advice: string[]
   sources: Source[]
+  /** null với mục không liên quan tới lớp tư thế */
+  postureClasses: ClassBreakdown | null
 }
 
 export interface MyHealthRisks {
