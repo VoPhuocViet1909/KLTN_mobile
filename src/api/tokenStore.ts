@@ -10,6 +10,7 @@ const USER_KEY = 'kltn.user'
 const DEVICE_KEY = 'kltn.deviceId'
 
 // Access token chỉ nằm trong bộ nhớ (mất khi tắt app, sẽ refresh lại).
+let sessionGeneration = 0
 let accessToken: string | null = null
 let refreshToken: string | null = null
 let user: SessionUser | null = null
@@ -21,6 +22,14 @@ async function read(key: string): Promise<string | null> {
   } catch {
     return null
   }
+}
+
+// Xếp các lần ghi phiên theo thứ tự để lần xóa luôn chạy sau lần xoay token đã bắt đầu.
+let pendingSessionWrite = Promise.resolve()
+
+function writeSession(key: string, value: string | null): Promise<void> {
+  pendingSessionWrite = pendingSessionWrite.then(() => write(key, value))
+  return pendingSessionWrite
 }
 
 async function write(key: string, value: string | null): Promise<void> {
@@ -45,6 +54,7 @@ export const tokenStore = {
     }
   },
 
+  getSessionGeneration: () => sessionGeneration,
   getAccessToken: () => accessToken,
   getRefreshToken: () => refreshToken,
   getUser: () => user,
@@ -62,19 +72,21 @@ export const tokenStore = {
   setTokens(pair: TokenPair): Promise<void> {
     accessToken = pair.accessToken
     refreshToken = pair.refreshToken
-    return write(REFRESH_KEY, pair.refreshToken)
+    return writeSession(REFRESH_KEY, pair.refreshToken)
   },
 
   setUser(next: SessionUser): Promise<void> {
     user = next
-    return write(USER_KEY, JSON.stringify(next))
+    return writeSession(USER_KEY, JSON.stringify(next))
   },
 
   /** Xóa phiên (giữ deviceId). */
   async clear() {
+    sessionGeneration++
     accessToken = null
     refreshToken = null
     user = null
-    await Promise.all([write(REFRESH_KEY, null), write(USER_KEY, null)])
+    void writeSession(REFRESH_KEY, null)
+    await writeSession(USER_KEY, null)
   },
 }

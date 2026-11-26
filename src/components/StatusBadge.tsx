@@ -1,13 +1,13 @@
 import { StyleSheet, Text, View } from 'react-native'
 import { STATE_META } from '@/lib/labels'
-import type { DeviceState } from '@/realtime/socket'
+import type { ObservationState } from '@/realtime/observation'
 import { colors, fonts, space } from '@/theme/tokens'
 
 /**
  * Trạng thái tư thế. Màu KHÔNG đứng một mình: luôn có icon + chữ.
  * Màu chỉ tô icon; chữ dùng màu chữ chính để dễ đọc (design system mục 3).
  */
-export function StatusBadge({ state, size = 'md' }: { state: DeviceState; size?: 'md' | 'lg' }) {
+export function StatusBadge({ state, size = 'md' }: { state: ObservationState; size?: 'md' | 'lg' }) {
   const meta = STATE_META[state]
   const Icon = meta.icon
   const big = size === 'lg'

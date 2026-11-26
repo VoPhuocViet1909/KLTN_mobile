@@ -11,9 +11,5 @@ export const authApi = {
       data: { email, password, deviceName: 'Mobile App', deviceId: await tokenStore.getDeviceId() },
     }),
 
-  /** Luôn 204, kể cả token đã hết hạn. */
-  logout: (refreshToken: string) =>
-    request<void>({ method: 'POST', url: '/auth/logout', data: { refreshToken } }),
-
   me: () => request<SessionUser>({ method: 'GET', url: '/auth/me' }),
 }
