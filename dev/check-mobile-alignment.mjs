@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { once } from 'node:events'
 import { createServer } from 'node:http'
 import { registerHooks } from 'node:module'
+import { uniqueHistoryRows } from '../src/lib/historyRows.ts'
 import { currentObservations, newerObservation, validObservation } from '../src/realtime/observation.ts'
 
 const observedAt = '2026-11-26T03:00:00.000Z'
@@ -19,6 +20,12 @@ assert.equal(newerObservation({ ...event, sessionId: 'session-2', sequence: 1 },
 assert.deepEqual(currentObservations([event, { ...event, userId: 'other' }], 'mine', Date.parse(observedAt)), [event])
 assert.deepEqual(currentObservations([event], 'mine', Date.parse(event.expiresAt)), [])
 console.log('PASS device-state v1, thứ tự, chính chủ và hết hạn')
+
+const alert = { userId: 'mine', deviceId: 'desktop-1', sessionId: 'session-1', alertType: 'NECK_TRUNK', startedAt: observedAt }
+const updated = { ...alert, endedAt: '2026-11-26T03:01:00.000Z' }
+const otherType = { ...alert, alertType: 'TOO_CLOSE' }
+assert.deepEqual(uniqueHistoryRows([{ items: [alert] }, { items: [updated, otherType] }]), [updated, otherType])
+console.log('PASS trang cảnh báo chồng nhau không tạo dòng trùng')
 
 let rotations = 0
 let liveToken = 'refresh-0'

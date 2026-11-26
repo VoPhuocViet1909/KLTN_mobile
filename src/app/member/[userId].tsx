@@ -11,6 +11,7 @@ import { AlertRow } from '@/components/AlertRow'
 import { Forbidden } from '@/components/Forbidden'
 import { useTopInset } from '@/components/topInset'
 import { Card, EmptyState, ErrorState, LoadingState, Segmented } from '@/components/ui'
+import { historyRowKey, uniqueHistoryRows } from '@/lib/historyRows'
 import { colors, space, text } from '@/theme/tokens'
 
 const RANGES = [
@@ -35,7 +36,7 @@ function Member() {
   const directory = useUserDirectory()
   const q = useOrgMemberAlerts(userId, days)
   const [refreshing, setRefreshing] = useState(false)
-  const items = useMemo<AlertItem[]>(() => (q.data?.pages ?? []).flatMap((p) => p.items), [q.data])
+  const items = useMemo<AlertItem[]>(() => uniqueHistoryRows(q.data?.pages ?? []), [q.data])
   const total = q.data?.pages[0]?.total ?? 0
   const name = displayUser(directory.data, userId)
 
@@ -53,7 +54,7 @@ function Member() {
       style={styles.list}
       contentContainerStyle={[styles.content, { paddingTop: topInset + space.sm, paddingBottom: insets.bottom + space.xxl }]}
       data={items}
-      keyExtractor={(a) => `${a.sessionId}|${a.deviceId}|${a.alertType}|${a.startedAt}`}
+      keyExtractor={historyRowKey}
       ListHeaderComponent={
         <View style={styles.header}>
           <Pressable
