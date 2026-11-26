@@ -43,9 +43,9 @@ backend để có tài khoản thử; **email và mật khẩu demo nằm ở `A
 
 ## Trạng thái trên màn Hôm nay
 
-Màn Hôm nay cần Desktop App phát `device-state` v1. App hiển thị trạng thái hiệu chỉnh, mất camera và thiếu dữ liệu khi Desktop báo các trạng thái đó.
+Màn Hôm nay và Tổ chức cần Desktop App phát `device-state` v1. App hiển thị trạng thái hiệu chỉnh, mất camera và thiếu dữ liệu khi Desktop báo các trạng thái đó.
 Bản tin hết hạn sau tối đa 15 giây. Khi socket mất kết nối, app bỏ trạng thái đã nhận. Trên các bản Desktop chỉ phát `status`,
-thông báo cục bộ vẫn nhận cảnh báo nhưng màn Hôm nay chưa có dữ liệu quan sát.
+thông báo cục bộ vẫn nhận cảnh báo. Hôm nay và Tổ chức cần bản tin quan sát để hiển thị tư thế hiện tại.
 
 ## Thông báo trên điện thoại
 
@@ -95,7 +95,7 @@ Kiểm hồi quy trạng thái quan sát và đăng xuất khi token hết hạn
 ```
 src/app/        route (Expo Router): login, (tabs)/index|history|stats|org|settings, member/[userId]
 src/api/        axios client (refresh một lần), tokenStore (SecureStore), auth, stats, alerts, config, org, users
-src/realtime/   socket.io, hooks, StatusProvider (giữ trạng thái `status` qua các tab)
+src/realtime/   socket.io, hooks, ObservationProvider (giữ `device-state` qua các tab)
 src/notifications/  thông báo cục bộ: rules (debounce), prefs (SecureStore), NotificationProvider
 src/lib/        types, errors, labels, time – chép từ GIT_frontend/src/lib (dòng đầu mỗi file ghi nguồn)
 src/components/ Card, Button, StatusBadge, Screen, các trạng thái loading/rỗng/lỗi

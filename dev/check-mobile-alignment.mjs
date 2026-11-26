@@ -4,7 +4,7 @@ import { once } from 'node:events'
 import { createServer } from 'node:http'
 import { registerHooks } from 'node:module'
 import { uniqueHistoryRows } from '../src/lib/historyRows.ts'
-import { currentObservations, newerObservation, validObservation } from '../src/realtime/observation.ts'
+import { currentObservations, latestObservationByUser, newerObservation, validObservation } from '../src/realtime/observation.ts'
 
 const observedAt = '2026-11-26T03:00:00.000Z'
 const event = {
@@ -19,6 +19,11 @@ assert.equal(newerObservation({ ...event, sequence: 4 }, event), true)
 assert.equal(newerObservation({ ...event, sessionId: 'session-2', sequence: 1 }, event), true)
 assert.deepEqual(currentObservations([event, { ...event, userId: 'other' }], 'mine', Date.parse(observedAt)), [event])
 assert.deepEqual(currentObservations([event], 'mine', Date.parse(event.expiresAt)), [])
+const otherUser = { ...event, userId: 'other' }
+const stopped = { ...event, deviceId: 'desktop-2', state: 'OFFLINE', reason: 'SESSION_STOPPED' }
+assert.deepEqual(currentObservations([event, otherUser], 'mine', Date.parse(observedAt), true), [event, otherUser])
+assert.equal(latestObservationByUser([stopped, event, otherUser]).get('mine')?.state, 'CAMERA_LOST')
+assert.equal(latestObservationByUser([stopped, otherUser]).get('mine')?.state, 'OFFLINE')
 console.log('PASS device-state v1, thứ tự, chính chủ và hết hạn')
 
 const alert = { userId: 'mine', deviceId: 'desktop-1', sessionId: 'session-1', alertType: 'NECK_TRUNK', startedAt: observedAt }

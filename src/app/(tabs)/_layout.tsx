@@ -3,7 +3,7 @@ import type { ColorValue } from 'react-native'
 import { Building2, ChartLine, History, House, Settings, type LucideIcon } from 'lucide-react-native'
 import { isOrgAdmin, useAuth } from '@/auth/context'
 import { NotificationProvider } from '@/notifications/NotificationProvider'
-import { StatusProvider } from '@/realtime/StatusProvider'
+import { ObservationProvider } from '@/realtime/ObservationProvider'
 import { colors, fonts } from '@/theme/tokens'
 
 function icon(Icon: LucideIcon) {
@@ -17,7 +17,7 @@ export default function TabsLayout() {
   const showOrg = isOrgAdmin(user)
 
   return (
-    <StatusProvider>
+    <ObservationProvider key={user?.id}>
       <NotificationProvider>
         <Tabs
           screenOptions={{
@@ -37,6 +37,6 @@ export default function TabsLayout() {
           <Tabs.Screen name="settings" options={{ title: 'Cài đặt', tabBarIcon: icon(Settings) }} />
         </Tabs>
       </NotificationProvider>
-    </StatusProvider>
+    </ObservationProvider>
   )
 }

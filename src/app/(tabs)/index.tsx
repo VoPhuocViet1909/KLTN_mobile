@@ -8,7 +8,7 @@ import { StatusBadge } from '@/components/StatusBadge'
 import { Card, EmptyState, ErrorState, Fact, LoadingState, SectionTitle } from '@/components/ui'
 import { alertLabel } from '@/lib/labels'
 import { formatDateTime, formatMinutes } from '@/lib/time'
-import { useMyObservations } from '@/realtime/useMyObservations'
+import { useMyObservations } from '@/realtime/ObservationProvider'
 import { colors, fonts, space, text } from '@/theme/tokens'
 
 export default function TodayScreen() {
