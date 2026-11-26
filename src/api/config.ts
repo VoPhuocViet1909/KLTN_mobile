@@ -1,6 +1,7 @@
 // Dựa trên GIT_frontend/src/lib/api/config.ts (commit 9d5677d), giữ đồng bộ khi web đổi. Bỏ phần cấu hình tổ chức (mobile chưa dùng).
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
+import { ApiError } from '@/lib/errors'
 import { useRealtimeEvent } from '@/realtime/hooks'
 import { onConnectionChange } from '@/realtime/socket'
 import { request } from './client'
@@ -12,7 +13,7 @@ export type ConfigValues = Record<string, number | boolean | string | null>
 
 export const CONFIG_QUERY_KEY = ['config', 'me'] as const
 const DETAILS_QUERY_KEY = [...CONFIG_QUERY_KEY, 'details'] as const
-export type ConfigDetails = { personal: ConfigValues; organization: ConfigValues; effective: ConfigValues }
+export type ConfigDetails = { version: number; personal: ConfigValues; organization: ConfigValues; effective: ConfigValues }
 
 export function useMyConfigDetails() {
   return useQuery({
@@ -32,7 +33,13 @@ export function useMyConfig() {
 export function useSaveMyConfig() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (body: ConfigValues) => request<ConfigValues>({ method: 'PUT', url: '/config/me', data: body }),
+    mutationFn: ({ body, expectedVersion }: { body: ConfigValues; expectedVersion: number }) =>
+      request<ConfigValues>({ method: 'PUT', url: '/config/me', params: { expectedVersion }, data: body }),
+    onError: (error) => {
+      if (error instanceof ApiError && error.code === 'RESOURCE_VERSION_CONFLICT') {
+        void qc.invalidateQueries({ queryKey: DETAILS_QUERY_KEY })
+      }
+    },
     onSuccess: async (effective) => {
       qc.setQueryData(CONFIG_QUERY_KEY, effective)
       await qc.invalidateQueries({ queryKey: DETAILS_QUERY_KEY })

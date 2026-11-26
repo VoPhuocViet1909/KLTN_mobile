@@ -1,7 +1,7 @@
 import { createContext, useContext } from 'react'
 import type { Role, SessionUser } from '@/lib/types'
 
-export type AuthStatus = 'loading' | 'authenticated' | 'anonymous'
+export type AuthStatus = 'loading' | 'restoring' | 'authenticated' | 'anonymous'
 
 export interface AuthContextValue {
   user: SessionUser | null

@@ -1,5 +1,7 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { Moon } from 'lucide-react-native'
 import { StyleSheet, Text, View } from 'react-native'
+import { MY_HEALTH_RISKS_QUERY_KEY } from '@/api/insights'
 import { sumAlerts, useTodaySummary } from '@/api/stats'
 import { useAuth } from '@/auth/context'
 import { HealthRiskCard } from '@/components/HealthRiskCard'
@@ -13,6 +15,7 @@ import { colors, fonts, space, text } from '@/theme/tokens'
 
 export default function TodayScreen() {
   const { user } = useAuth()
+  const queryClient = useQueryClient()
   const summary = useTodaySummary()
   const { connected, devices, hasObservation } = useMyObservations(user?.id)
   const activeDevices = devices.filter((device) => device.state !== 'OFFLINE')
@@ -26,7 +29,10 @@ export default function TodayScreen() {
     <Screen
       title="Hôm nay"
       subtitle={user?.name ? `Xin chào, ${user.name}` : undefined}
-      onRefresh={() => summary.refetch()}>
+      onRefresh={() => Promise.all([
+        summary.refetch(),
+        queryClient.invalidateQueries({ queryKey: [...MY_HEALTH_RISKS_QUERY_KEY, '7d'], exact: true }),
+      ])}>
       <Card>
         <View style={styles.cardHead}>
           <Text style={text.caption}>Tư thế lúc này</Text>

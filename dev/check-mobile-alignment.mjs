@@ -3,6 +3,8 @@ import assert from 'node:assert/strict'
 import { once } from 'node:events'
 import { createServer } from 'node:http'
 import { registerHooks } from 'node:module'
+import { InfiniteQueryObserver, QueryClient } from '@tanstack/react-query'
+import { msUntilNextVnDay, vnToday } from '../src/lib/time.ts'
 import { uniqueHistoryRows } from '../src/lib/historyRows.ts'
 import { currentObservations, latestObservationByUser, newerObservation, validObservation } from '../src/realtime/observation.ts'
 
@@ -32,7 +34,17 @@ const otherType = { ...alert, alertType: 'TOO_CLOSE' }
 assert.deepEqual(uniqueHistoryRows([{ items: [alert] }, { items: [updated, otherType] }]), [updated, otherType])
 console.log('PASS trang cảnh báo chồng nhau không tạo dòng trùng')
 
+const midnight = Date.parse('2026-11-25T17:00:00Z')
+assert.equal(msUntilNextVnDay(new Date(midnight - 1)), 1)
+assert.notEqual(vnToday(new Date(midnight - 1)).from, vnToday(new Date(midnight)).from)
+assert.ok(vnToday(new Date(midnight)).from < vnToday(new Date(midnight)).to)
+assert.equal(vnToday(new Date(midnight + 1)).to, new Date(midnight + 1).toISOString())
+console.log('PASS khoảng Hôm nay trước, đúng và sau 00:00 giờ Việt Nam')
+
 let rotations = 0
+let refreshOffline = false
+let timeline = Array.from({ length: 22 }, (_, i) => ({ ...alert, sessionId: String(i) }))
+const requestedWindows = []
 let liveToken = 'refresh-0'
 const logoutBodies = []
 const server = createServer(async (req, res) => {
@@ -43,6 +55,10 @@ const server = createServer(async (req, res) => {
     res.writeHead(status, { 'Content-Type': 'application/json' }).end(JSON.stringify(data))
   }
   if (req.url === '/api/v1/auth/refresh' && body.refreshToken === liveToken) {
+    if (refreshOffline) {
+      req.socket.destroy()
+      return
+    }
     rotations++
     liveToken = 'refresh-' + rotations
     send(200, { accessToken: 'access-' + rotations, refreshToken: liveToken, expiresIn: 900 })
@@ -54,6 +70,12 @@ const server = createServer(async (req, res) => {
     }
     if (body.refreshToken === liveToken) liveToken = null
     res.writeHead(204).end()
+  } else if (req.url.startsWith('/api/v1/alerts/me?')) {
+    const params = new URL(req.url, 'http://localhost').searchParams
+    const page = Number(params.get('page'))
+    const size = Number(params.get('size'))
+    requestedWindows.push([params.get('from'), params.get('to')])
+    send(200, { items: timeline.slice(page * size, (page + 1) * size), page, size, total: timeline.length })
   } else {
     send(401, { code: 'AUTH_INVALID_REFRESH_TOKEN' })
   }
@@ -104,6 +126,41 @@ try {
   assert.equal(liveToken, null)
   assert.equal(tokenStore.getRefreshToken(), null)
   console.log('PASS logout chờ lượt xoay token đang chạy và chặn lượt xoay mới')
+
+  const { connectivity } = await import('../src/lib/connectivity.ts')
+  liveToken = 'saved-session'
+  await tokenStore.setTokens({ accessToken: '', refreshToken: liveToken, expiresIn: 900 })
+  refreshOffline = true
+  await assert.rejects(refreshAccessToken())
+  assert.equal(connectivity.isOffline(), true)
+  assert.equal(tokenStore.getRefreshToken(), 'saved-session')
+  refreshOffline = false
+  assert.equal(await refreshAccessToken(), 'access-3')
+  assert.equal(connectivity.isOffline(), false)
+  console.log('PASS lỗi mạng giữ refresh token và phục hồi phiên khi gọi lại thành công')
+
+  const { HistoryChanged, historyQueryOptions } = await import('../src/api/alerts.ts')
+  const cache = new QueryClient()
+  const options = historyQueryOptions(['alerts', 'test'], '/alerts/me', 7)
+  const history = new InfiniteQueryObserver(cache, options)
+  const unsubscribe = history.subscribe(() => {})
+  try {
+    await history.refetch()
+    timeline = [{ ...alert, sessionId: 'backfilled' }, ...timeline]
+    const shifted = await history.fetchNextPage()
+    assert.ok(shifted.error instanceof HistoryChanged)
+    assert.deepEqual(requestedWindows[0], requestedWindows[1])
+    await cache.resetQueries({ queryKey: options.queryKey, exact: true })
+    const reset = await history.fetchNextPage()
+    const rows = uniqueHistoryRows(reset.data.pages)
+    assert.equal(rows[0].sessionId, 'backfilled')
+    assert.equal(rows.length, 23)
+    console.log('PASS phát hiện gửi bù giữa trang, đọc lại đủ 23 dòng với trang đầu mới')
+  } finally {
+    unsubscribe()
+    cache.clear()
+  }
+
 } finally {
   hooks.deregister()
   server.close()

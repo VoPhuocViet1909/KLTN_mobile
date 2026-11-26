@@ -1,8 +1,8 @@
 // Dựa trên GIT_frontend/src/lib/api/org.ts (commit 9d5677d), giữ đồng bộ khi web đổi.
 // ORG_ADMIN có orgId – team-sync mục 4.5 và 4.6. `from`/`to` tính trong queryFn để khóa truy vấn chỉ phụ thuộc `days`.
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { lastDays } from '@/lib/time'
-import { HISTORY_PAGE_SIZE, type AlertItem, type Paged } from './alerts'
+import { useHistoryPages, type AlertItem } from './alerts'
 import { request } from './client'
 import type { Bucket, Summary } from './stats'
 
@@ -39,15 +39,5 @@ export function useOrgMembers(days: number, enabled = true) {
 
 /** Cảnh báo của một nhân viên (`/alerts/org?userId=`), mới nhất trước, cuộn vô hạn. */
 export function useOrgMemberAlerts(userId: string, days: number, enabled = true) {
-  return useInfiniteQuery({
-    queryKey: ['alerts', 'org', userId, days],
-    initialPageParam: 0,
-    enabled,
-    queryFn: ({ pageParam }) =>
-      request<Paged<AlertItem>>({
-        url: '/alerts/org',
-        params: { ...lastDays(days), userId, page: pageParam, size: HISTORY_PAGE_SIZE },
-      }),
-    getNextPageParam: (last) => ((last.page + 1) * last.size < last.total ? last.page + 1 : undefined),
-  })
+  return useHistoryPages<AlertItem>(['alerts', 'org', userId, days], '/alerts/org', days, { userId }, enabled)
 }

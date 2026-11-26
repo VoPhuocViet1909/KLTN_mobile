@@ -1,7 +1,9 @@
 // Dựa trên GIT_frontend/src/lib/api/stats.ts (commit 9d5677d), giữ đồng bộ khi web đổi.
 import { useQuery } from '@tanstack/react-query'
+import { useEffect, useState } from 'react'
+import { AppState } from 'react-native'
 import type { ClassDistribution } from '@/lib/postureClass'
-import { lastDays, vnToday } from '@/lib/time'
+import { lastDays, msUntilNextVnDay, vnToday } from '@/lib/time'
 import { request } from './client'
 
 // analytics-service – team-sync mục 4.6
@@ -23,8 +25,26 @@ export const fetchSummary = (range: { from: string; to: string }) =>
 
 /** Số liệu hôm nay (từ 00:00 giờ Việt Nam). Mỗi lần tải lại tính lại `to` = bây giờ; khóa cache đổi khi sang ngày mới. */
 export function useTodaySummary() {
+  const [day, setDay] = useState(() => vnToday().from)
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>
+    function updateDay() {
+      clearTimeout(timer)
+      setDay(vnToday().from)
+      timer = setTimeout(updateDay, msUntilNextVnDay() + 1)
+    }
+    const subscription = AppState.addEventListener('change', (next) => {
+      if (next === 'active') updateDay()
+    })
+    updateDay()
+    return () => {
+      clearTimeout(timer)
+      subscription.remove()
+    }
+  }, [])
+
   return useQuery({
-    queryKey: ['stats', 'me', 'summary', 'today', vnToday().from],
+    queryKey: ['stats', 'me', 'summary', 'today', day],
     queryFn: () => fetchSummary(vnToday()),
   })
 }
@@ -62,9 +82,11 @@ export function useMyHeatmap(weeks: number) {
  * Số giây theo lớp tư thế (model v4) theo ngày hoặc tuần (giờ Việt Nam). Client/model cũ không gửi lớp thì
  * `classSec` < `presenceSec`; không có dữ liệu lớp thì `classSec` = 0.
  */
+export const POSTURE_CLASSES_QUERY_KEY = ['stats', 'me', 'posture-classes'] as const
+
 export function useMyPostureClasses(days: number, bucket: 'day' | 'week') {
   return useQuery({
-    queryKey: ['stats', 'me', 'posture-classes', days, bucket],
+    queryKey: [...POSTURE_CLASSES_QUERY_KEY, days, bucket],
     queryFn: () =>
       request<ClassDistribution>({ url: '/stats/me/posture-classes', params: { ...lastDays(days), bucket } }),
   })

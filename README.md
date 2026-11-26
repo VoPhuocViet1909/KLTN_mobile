@@ -41,6 +41,14 @@ backend để có tài khoản thử; **email và mật khẩu demo nằm ở `A
 | Tổ chức (ORG_ADMIN) | xong: ai đang ngồi sai (realtime), tổng quan 7/30 ngày, xu hướng, danh sách nhân viên → cảnh báo của từng người. Role khác không thấy tab; mở link trực tiếp thì hiện màn 403 |
 | Cài đặt | xong: tài khoản, công tắc thông báo, form cấu hình cá nhân (kế thừa tổ chức), đăng xuất |
 
+## Khôi phục phiên và dữ liệu
+
+Khi mở app với phiên còn lưu nhưng máy chủ chưa phản hồi, màn khôi phục sẽ thử lại khi có kết nối hoặc khi app trở về foreground.
+Cài đặt cá nhân cần backend hỗ trợ `version` ở `GET /config/me/details`. Lưu và xóa gửi `expectedVersion`, máy chủ báo xung đột nếu cấu hình đã thay đổi.
+
+Lịch sử giữ cùng khoảng thời gian trong một lượt cuộn. Khi trang sau cho thấy số mục thay đổi hoặc bị chồng dòng vì dữ liệu gửi bù,
+app tải lại từ trang đầu. Kéo để làm mới sẽ bắt đầu một lượt mới.
+
 ## Trạng thái trên màn Hôm nay
 
 Màn Hôm nay và Tổ chức cần Desktop App phát `device-state` v1. App hiển thị trạng thái hiệu chỉnh, mất camera và thiếu dữ liệu khi Desktop báo các trạng thái đó.

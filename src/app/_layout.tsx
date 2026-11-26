@@ -10,10 +10,12 @@ import { Stack } from 'expo-router'
 import * as SplashScreen from 'expo-splash-screen'
 import { StatusBar } from 'expo-status-bar'
 import { useEffect, useState } from 'react'
-import { View } from 'react-native'
+import { Text, View } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { AuthProvider } from '@/auth/AuthProvider'
 import { useAuth } from '@/auth/context'
+import { LoadingState } from '@/components/ui'
+import { space, text } from '@/theme/tokens'
 import { ConnectionBanner } from '@/components/ConnectionBanner'
 import { ApiError } from '@/lib/errors'
 
@@ -32,7 +34,7 @@ function makeQueryClient() {
 }
 
 function Routes() {
-  const { status } = useAuth()
+  const { status, notice } = useAuth()
   const [fontsLoaded, fontError] = useFonts({
     BeVietnamPro_400Regular,
     BeVietnamPro_500Medium,
@@ -50,16 +52,23 @@ function Routes() {
   return (
     <View style={{ flex: 1 }}>
       <ConnectionBanner />
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Protected guard={status === 'authenticated'}>
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="member/[userId]" />
-          <Stack.Screen name="health-risks" />
-        </Stack.Protected>
-        <Stack.Protected guard={status === 'anonymous'}>
-          <Stack.Screen name="login" />
-        </Stack.Protected>
-      </Stack>
+      {status === 'restoring' ? (
+        <View style={{ flex: 1, justifyContent: 'center', padding: space.lg }}>
+          <LoadingState label="Đang khôi phục phiên đăng nhập…" />
+          {notice ? <Text style={text.caption}>{notice}</Text> : null}
+        </View>
+      ) : (
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Protected guard={status === 'authenticated'}>
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="member/[userId]" />
+            <Stack.Screen name="health-risks" />
+          </Stack.Protected>
+          <Stack.Protected guard={status === 'anonymous'}>
+            <Stack.Screen name="login" />
+          </Stack.Protected>
+        </Stack>
+      )}
     </View>
   )
 }
