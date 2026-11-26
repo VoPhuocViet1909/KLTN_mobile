@@ -12,17 +12,17 @@ import { Forbidden } from '@/components/Forbidden'
 import { Screen } from '@/components/Screen'
 import { StatusBadge } from '@/components/StatusBadge'
 import { Card, EmptyState, ErrorState, Fact, LoadingState, Segmented, SectionTitle } from '@/components/ui'
-import { alertLabel } from '@/lib/labels'
+import { alertLabel, STATE_META } from '@/lib/labels'
 import { formatDateTime, formatMinutes } from '@/lib/time'
-import type { DeviceState } from '@/realtime/socket'
-import { useAllDevices } from '@/realtime/StatusProvider'
+import { latestObservationByUser, type ObservationState } from '@/realtime/observation'
+import { useObservations } from '@/realtime/ObservationProvider'
 import { colors, radius, space, text } from '@/theme/tokens'
 
 const RANGES = [
   { value: 7, label: '7 ngày' },
   { value: 30, label: '30 ngày' },
 ]
-const STATES: DeviceState[] = ['GOOD', 'BAD', 'AWAY', 'OFFLINE']
+const STATES: ObservationState[] = ['GOOD', 'BAD', 'AWAY', 'CALIBRATING', 'CAMERA_LOST', 'UNKNOWN', 'OFFLINE']
 
 export default function OrgScreen() {
   const { user } = useAuth()
@@ -42,18 +42,10 @@ function Org() {
   const directory = useUserDirectory()
   const nameOf = (userId: string) => displayUser(directory.data, userId)
 
-  // ORG_ADMIN tự ở room org:{orgId}: nhận `status` của mọi máy trong tổ chức từ lúc mở app.
-  const devices = useAllDevices()
-  const bad = useMemo(
-    () => devices.filter((d) => d.state === 'BAD').sort((a, b) => b.ts.localeCompare(a.ts)),
-    [devices],
-  )
-  const countOf = (st: DeviceState) => devices.filter((d) => d.state === st).length
-  const stateOfUser = useMemo(() => {
-    const m = new Map<string, DeviceState>()
-    for (const d of [...devices].sort((a, b) => a.ts.localeCompare(b.ts))) m.set(d.userId, d.state)
-    return m
-  }, [devices])
+  const { connected, devices } = useObservations()
+  const bad = devices.filter((device) => device.state === 'BAD')
+  const countOf = (state: ObservationState) => devices.filter((device) => device.state === state).length
+  const stateOfUser = useMemo(() => latestObservationByUser(devices), [devices])
 
   const s = summary.data
   const badShare = s && s.presenceMinutes > 0 ? Math.round((s.badMinutes / s.presenceMinutes) * 100) : null
@@ -68,32 +60,33 @@ function Org() {
       onRefresh={() => Promise.all([summary.refetch(), series.refetch(), members.refetch(), directory.refetch()])}>
       <Card>
         <SectionTitle>Ai đang ngồi sai lúc này</SectionTitle>
-        {devices.length === 0 ? (
-          <Text style={text.body}>Chưa có máy nào gửi dữ liệu kể từ lúc bạn mở ứng dụng.</Text>
+        {!connected ? (
+          <Text style={text.body}>Đang mất kết nối cập nhật trạng thái.</Text>
+        ) : devices.length === 0 ? (
+          <Text style={text.body}>Chưa có trạng thái mới từ Desktop App trong tổ chức.</Text>
         ) : (
           <>
             <View style={styles.counts}>
               {STATES.map((st) => (
-                <View key={st} style={styles.count} accessible accessibilityLabel={`${countOf(st)} máy ${st === 'GOOD' ? 'ngồi đúng' : st === 'BAD' ? 'ngồi sai' : st === 'AWAY' ? 'vắng mặt' : 'không kết nối'}`}>
+                <View key={st} style={styles.count} accessible accessibilityLabel={`${STATE_META[st].label}, ${countOf(st)} máy`}>
                   <StatusBadge state={st} />
                   <Text style={text.bodyStrong}>{countOf(st)} máy</Text>
                 </View>
               ))}
             </View>
             {bad.length === 0 ? (
-              <Text style={text.body}>Không ai đang ngồi sai.</Text>
+              <Text style={text.body}>Chưa ghi nhận máy nào đang báo tư thế sai.</Text>
             ) : (
               bad.map((d) => (
                 <View key={`${d.userId}:${d.deviceId}`} style={styles.badRow} accessible>
                   <Text style={[text.bodyStrong, styles.flex]}>{nameOf(d.userId)}</Text>
-                  <Text style={text.body}>{alertLabel(d.alertType)}</Text>
-                  <Text style={text.caption}>{formatDateTime(d.ts)}</Text>
+                  <Text style={text.caption}>{formatDateTime(d.receivedAt)}</Text>
                 </View>
               ))
             )}
           </>
         )}
-        <Text style={text.caption}>Cập nhật trực tiếp, tính từ lúc bạn mở ứng dụng.</Text>
+        <Text style={text.caption}>Mỗi trạng thái có hiệu lực tối đa 15 giây.</Text>
       </Card>
 
       <Segmented
@@ -168,7 +161,7 @@ function Org() {
             key={m.userId}
             member={m}
             name={nameOf(m.userId)}
-            state={stateOfUser.get(m.userId)}
+            state={stateOfUser.get(m.userId)?.state}
             onPress={() => router.push({ pathname: '/member/[userId]', params: { userId: m.userId, days: String(days) } })}
           />
         ))
@@ -184,7 +177,7 @@ function Org() {
   )
 }
 
-function MemberRow({ member: m, name, state, onPress }: { member: OrgMember; name: string; state?: DeviceState; onPress: () => void }) {
+function MemberRow({ member: m, name, state, onPress }: { member: OrgMember; name: string; state?: ObservationState; onPress: () => void }) {
   const badPct = m.presenceMinutes > 0 ? Math.round((m.badMinutes / m.presenceMinutes) * 100) : null
   const alerts = sumAlerts(m.alerts)
   return (

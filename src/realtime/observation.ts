@@ -45,8 +45,20 @@ export function newerObservation(next: DeviceObservation, previous?: DeviceObser
     : Date.parse(next.observedAt) >= Date.parse(previous.observedAt))
 }
 
-export function currentObservations(events: readonly DeviceObservation[], userId: string | undefined, now: number) {
+export function currentObservations(events: readonly DeviceObservation[], userId: string | undefined, now: number, includeOrganization = false) {
   return events
-    .filter((event) => event.userId === userId && Date.parse(event.expiresAt) > now)
+    .filter((event) => (includeOrganization || event.userId === userId) && Date.parse(event.expiresAt) > now)
     .sort((a, b) => Date.parse(b.receivedAt) - Date.parse(a.receivedAt))
+}
+
+// Các quan sát đã được xếp mới nhất trước. Một máy đã dừng không lấn trạng thái của máy còn gửi dữ liệu.
+export function latestObservationByUser(devices: readonly DeviceObservation[]) {
+  const result = new Map<string, DeviceObservation>()
+  for (const device of devices) {
+    const previous = result.get(device.userId)
+    if (!previous || (previous.state === 'OFFLINE' && device.state !== 'OFFLINE')) {
+      result.set(device.userId, device)
+    }
+  }
+  return result
 }
