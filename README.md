@@ -6,7 +6,7 @@ không chạy AI, không mở camera; mọi dữ liệu lấy từ backend qua G
 - Expo SDK 58, Expo Router (điều hướng theo file, thư mục `src/app/`).
 - Gọi API: axios + TanStack Query, refresh token **một lần tại một thời điểm** (như Dashboard web).
 - Token lưu bằng `expo-secure-store` (Keychain iOS / Keystore Android).
-- Realtime: `socket.io-client` (chỉ WebSocket), sự kiện `status` / `config` (team-sync 4.7).
+- Realtime: `socket.io-client` (chỉ WebSocket), sự kiện `device-state`, `status` và `config` (team-sync 4.7).
 - Giao diện theo KLTN-DS-1 (cùng web/desktop): màu ở `src/theme/tokens.ts`, font Be Vietnam Pro, trạng thái luôn có icon + chữ.
 
 ## Cài đặt và chạy
@@ -35,11 +35,17 @@ backend để có tài khoản thử; **email và mật khẩu demo nằm ở `A
 | Tab | Trạng thái |
 | --- | --- |
 | Đăng nhập | xong: lỗi tiếng Việt, hiện/ẩn mật khẩu, tự vào lại khi còn refresh token |
-| Hôm nay | xong: trạng thái realtime (GOOD/BAD/AWAY/OFFLINE) + số liệu hôm nay |
+| Hôm nay | xong: trạng thái quan sát realtime từ Desktop App + số liệu hôm nay |
 | Lịch sử | xong: cảnh báo + phiên làm việc, 7/30/92 ngày, lọc loại, cuộn vô hạn |
 | Thống kê | xong: điểm theo ngày, phút ngồi sai, heatmap thói quen 1/4/12 tuần |
 | Tổ chức (ORG_ADMIN) | xong: ai đang ngồi sai (realtime), tổng quan 7/30 ngày, xu hướng, danh sách nhân viên → cảnh báo của từng người. Role khác không thấy tab; mở link trực tiếp thì hiện màn 403 |
 | Cài đặt | xong: tài khoản, công tắc thông báo, form cấu hình cá nhân (kế thừa tổ chức), đăng xuất |
+
+## Trạng thái trên màn Hôm nay
+
+Màn Hôm nay cần Desktop App phát `device-state` v1. App hiển thị trạng thái hiệu chỉnh, mất camera và thiếu dữ liệu khi Desktop báo các trạng thái đó.
+Bản tin hết hạn sau tối đa 15 giây. Khi socket mất kết nối, app bỏ trạng thái đã nhận. Trên các bản Desktop chỉ phát `status`,
+thông báo cục bộ vẫn nhận cảnh báo nhưng màn Hôm nay chưa có dữ liệu quan sát.
 
 ## Thông báo trên điện thoại
 
@@ -80,7 +86,9 @@ set ADMIN_EMAIL=...   set ADMIN_PASSWORD=...        (SYS_ADMIN, xem AUTH_SEED_AD
 node dev/check-org.mjs
 ```
 
-Kiểm luật debounce thông báo (logic thuần): `node --experimental-strip-types dev/check-notify-rules.mjs`
+Kiểm luật debounce thông báo (logic thuần): `node --experimental-strip-types dev/check-notify-rules.mjs`.
+
+Kiểm hồi quy trạng thái quan sát và đăng xuất khi token hết hạn hoặc đang xoay vòng: `node dev/check-mobile-alignment.mjs` (Node 24).
 
 ## Cấu trúc
 

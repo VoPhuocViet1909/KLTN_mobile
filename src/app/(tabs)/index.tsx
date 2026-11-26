@@ -8,16 +8,15 @@ import { StatusBadge } from '@/components/StatusBadge'
 import { Card, EmptyState, ErrorState, Fact, LoadingState, SectionTitle } from '@/components/ui'
 import { alertLabel } from '@/lib/labels'
 import { formatDateTime, formatMinutes } from '@/lib/time'
-import { useRealtimeConnected } from '@/realtime/hooks'
-import { useMyDevices } from '@/realtime/StatusProvider'
+import { useMyObservations } from '@/realtime/useMyObservations'
 import { colors, fonts, space, text } from '@/theme/tokens'
 
 export default function TodayScreen() {
   const { user } = useAuth()
   const summary = useTodaySummary()
-  const devices = useMyDevices(user?.id)
-  const connected = useRealtimeConnected()
-  const current = devices[0] ?? null
+  const { connected, devices, hasObservation } = useMyObservations(user?.id)
+  const activeDevices = devices.filter((device) => device.state !== 'OFFLINE')
+  const current = activeDevices[0] ?? devices[0]
 
   const s = summary.data
   const topAlert = s ? Object.entries(s.alerts).sort((a, b) => b[1] - a[1])[0] : undefined
@@ -33,20 +32,17 @@ export default function TodayScreen() {
           <Text style={text.caption}>Tư thế lúc này</Text>
           <ConnectionChip connected={connected} />
         </View>
-        {current ? (
+        {current || !connected || hasObservation ? (
           <View style={styles.statusBody}>
-            <StatusBadge state={current.state} size="lg" />
-            {current.state === 'BAD' && current.alertType ? (
-              <Text style={text.section}>{alertLabel(current.alertType)}</Text>
-            ) : null}
-            <Text style={text.caption}>Cập nhật {formatDateTime(current.ts)}</Text>
-            {devices.length > 1 ? <Text style={text.caption}>{devices.length} máy đang gửi dữ liệu</Text> : null}
+            <StatusBadge state={current?.state ?? 'OFFLINE'} size="lg" />
+            {current ? <Text style={text.caption}>Cập nhật {formatDateTime(current.receivedAt)}</Text> : null}
+            {activeDevices.length > 1 ? <Text style={text.caption}>{activeDevices.length} máy đang gửi dữ liệu</Text> : null}
           </View>
         ) : (
           <EmptyState
             icon={Moon}
             title="Chưa có dữ liệu tư thế"
-            hint="Mở ứng dụng desktop, đăng nhập cùng tài khoản và hiệu chỉnh camera để xem tư thế tại đây."
+            hint="Mở bản Desktop App có hỗ trợ trạng thái trực tiếp và đăng nhập cùng tài khoản."
           />
         )}
       </Card>

@@ -1,7 +1,7 @@
 // Dựa trên GIT_frontend/src/lib/labels.ts (commit 9d5677d), giữ đồng bộ khi web đổi.
 // Icon dùng lucide-react-native (cùng bộ Lucide với web).
-import { CircleCheck, CircleOff, Moon, TriangleAlert, type LucideIcon } from 'lucide-react-native'
-import type { DeviceState } from '@/realtime/socket'
+import { CameraOff, CircleCheck, CircleHelp, CircleOff, Crosshair, Moon, TriangleAlert, type LucideIcon } from 'lucide-react-native'
+import type { ObservationState } from '@/realtime/observation'
 import { colors } from '@/theme/tokens'
 import type { Role } from './types'
 
@@ -40,10 +40,13 @@ export const sessionEndLabel = (r: string | null | undefined) => (r ? (SESSION_E
  * Trạng thái thiết bị. Màu KHÔNG được đứng một mình: luôn đi cùng icon + label
  * (đỏ/lục khó phân biệt với người mù màu).
  */
-export const STATE_META: Record<DeviceState, { label: string; icon: LucideIcon; color: string }> = {
+export const STATE_META: Record<ObservationState, { label: string; icon: LucideIcon; color: string }> = {
   GOOD: { label: 'Ngồi đúng', icon: CircleCheck, color: colors.status.good },
   BAD: { label: 'Đang ngồi sai', icon: TriangleAlert, color: colors.status.bad },
   AWAY: { label: 'Vắng mặt', icon: Moon, color: colors.status.away },
+  CALIBRATING: { label: 'Đang hiệu chỉnh', icon: Crosshair, color: colors.primary },
+  UNKNOWN: { label: 'Chưa đủ dữ liệu', icon: CircleHelp, color: colors.status.offline },
+  CAMERA_LOST: { label: 'Mất kết nối camera', icon: CameraOff, color: colors.status.offline },
   OFFLINE: { label: 'Không kết nối', icon: CircleOff, color: colors.status.offline },
 }
 

@@ -1,6 +1,8 @@
 // Dựa trên GIT_frontend/src/lib/api/config.ts (commit 9d5677d), giữ đồng bộ khi web đổi. Bỏ phần cấu hình tổ chức (mobile chưa dùng).
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useEffect } from 'react'
 import { useRealtimeEvent } from '@/realtime/hooks'
+import { onConnectionChange } from '@/realtime/socket'
 import { request } from './client'
 
 // config-service – team-sync mục 4.4; sự kiện Socket.IO `config` – mục 4.7
@@ -41,6 +43,10 @@ export function useSaveMyConfig() {
 /** Máy khác (hoặc tổ chức) vừa đổi cấu hình: server đẩy cả cấu hình hiệu lực, ghi thẳng vào cache. */
 export function useConfigRealtime() {
   const qc = useQueryClient()
+  // Có thể lỡ sự kiện config khi mất mạng, nên tải lại cấu hình khi kết nối lại.
+  useEffect(() => onConnectionChange((connected) => {
+    if (connected) void qc.invalidateQueries({ queryKey: CONFIG_QUERY_KEY })
+  }), [qc])
   useRealtimeEvent<ConfigValues>('config', (cfg) => {
     if (cfg && typeof cfg === 'object') {
       qc.setQueryData(CONFIG_QUERY_KEY, cfg)

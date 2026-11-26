@@ -5,6 +5,7 @@ import { useTopInset } from '@/components/topInset'
 import { useMyAlerts, useMySessions, type AlertItem, type SessionItem } from '@/api/alerts'
 import { AlertRow } from '@/components/AlertRow'
 import { Card, EmptyState, ErrorState, LoadingState, Segmented } from '@/components/ui'
+import { historyRowKey, uniqueHistoryRows } from '@/lib/historyRows'
 import { ALERT_LABEL, sessionEndLabel } from '@/lib/labels'
 import { formatDateTime, formatDuration } from '@/lib/time'
 import { colors, fonts, radius, space, text } from '@/theme/tokens'
@@ -39,7 +40,7 @@ export default function HistoryScreen() {
   const [refreshing, setRefreshing] = useState(false)
 
   const items = useMemo<(AlertItem | SessionItem)[]>(
-    () => ((q.data?.pages ?? []) as { items: (AlertItem | SessionItem)[] }[]).flatMap((p) => p.items),
+    () => uniqueHistoryRows<AlertItem | SessionItem>(q.data?.pages ?? []),
     [q.data],
   )
   const total = q.data?.pages[0]?.total ?? 0
@@ -77,9 +78,7 @@ export default function HistoryScreen() {
       style={styles.list}
       contentContainerStyle={[styles.content, { paddingTop: topInset + space.lg }]}
       data={items}
-      keyExtractor={(it, i) =>
-        'alertType' in it ? `${it.sessionId}|${it.deviceId}|${it.alertType}|${it.startedAt}` : `${it.sessionId}|${it.deviceId}|${i}`
-      }
+      keyExtractor={historyRowKey}
       ListHeaderComponent={header}
       renderItem={({ item }) => (
         <Card style={styles.row}>{'alertType' in item ? <AlertRow a={item} /> : <SessionRow s={item} />}</Card>

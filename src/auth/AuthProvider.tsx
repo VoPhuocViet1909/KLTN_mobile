@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { AppState } from 'react-native'
 import { authApi } from '@/api/auth'
-import { onSessionExpired, refreshAccessToken } from '@/api/client'
+import { onSessionExpired, refreshAccessToken, revokeCurrentSession } from '@/api/client'
 import { tokenStore } from '@/api/tokenStore'
 import {
   ApiError,
@@ -87,24 +87,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (email: string, password: string) => {
     const res = await authApi.login(email, password)
     await tokenStore.setTokens(res)
-    await tokenStore.setUser(res.user)
-    setUser(res.user)
+    const profile = { ...res.user, email }
+    await tokenStore.setUser(profile)
+    setUser(profile)
     setStatus('authenticated')
     setNotice(null)
-    return res.user
+    return profile
   }, [])
 
   const logout = useCallback(async () => {
     setNotice(null)
-    const refreshToken = tokenStore.getRefreshToken()
-    if (refreshToken) {
-      try {
-        await authApi.logout(refreshToken)
-      } catch {
-        /* vẫn đăng xuất phía máy */
-      }
+    disconnectRealtime()
+    try {
+      await revokeCurrentSession()
+    } catch {
+      /* vẫn đăng xuất phía máy */
     }
-    await tokenStore.clear()
     reset()
   }, [reset])
 

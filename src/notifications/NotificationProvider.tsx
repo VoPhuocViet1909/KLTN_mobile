@@ -2,6 +2,7 @@
 // Chạy được trong Expo Go. Chỉ nhận khi app đang mở hoặc vừa chuyển sang nền (iOS/Android tạm dừng WebSocket sau ít
 // phút ở nền); app tắt hẳn thì KHÔNG nhận. Push từ server cho trường hợp đó nằm ở bước sau (cần bản build riêng).
 import * as Notifications from 'expo-notifications'
+import { AndroidImportance } from 'expo-notifications'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Alert, Linking, Platform } from 'react-native'
 import { useAuth } from '@/auth/context'
@@ -34,7 +35,7 @@ async function ensureChannel() {
   if (Platform.OS !== 'android') return
   await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
     name: 'Cảnh báo tư thế',
-    importance: Notifications.AndroidImportance.HIGH,
+    importance: AndroidImportance.HIGH,
     vibrationPattern: [0, 250, 250, 250],
   })
 }
@@ -105,8 +106,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false)
   const state = useRef(newNotifyState())
   const [debug, setDebug] = useState<NotifyDebug>({ received: 0, lastStatus: '(chưa nhận gói status nào)', lastDecision: '-', lastError: '-' })
-  const mine = useRef(user?.id)
-  mine.current = user?.id
+  const userId = user?.id
 
   const requestPermission = useCallback(async (): Promise<boolean> => {
     await ensureChannel()
@@ -178,9 +178,6 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     [requestPermission],
   )
 
-  const enabledRef = useRef(enabled)
-  enabledRef.current = enabled
-
   const sendTest = useCallback(async () => {
     try {
       await Notifications.scheduleNotificationAsync({
@@ -195,20 +192,20 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
   useRealtimeEvent<StatusEvent>('status', (e) => {
     if (__DEV__) {
-      const own = e.userId === mine.current
+      const own = e.userId === userId
       setDebug((d) => ({
         ...d,
         received: d.received + 1,
         lastStatus: `${e.state}${e.alertType ? ' ' + e.alertType : ''} lúc ${e.ts}${own ? '' : ' (KHÔNG phải của tôi: userId khác)'}`,
       }))
     }
-    if (e.userId !== mine.current) return
+    if (e.userId !== userId) return
     // Luôn chạy luật để `lastState` đúng kể cả khi công tắc tắt (bật lên không báo lại trạng thái cũ).
     const { type, reason } = explainStatus(state.current, e, Date.now())
     if (__DEV__) {
-      setDebug((d) => ({ ...d, lastDecision: type && !enabledRef.current ? `${reason} NHƯNG công tắc đang TẮT nên không hiện` : reason }))
+      setDebug((d) => ({ ...d, lastDecision: type && !enabled ? `${reason} NHƯNG công tắc đang TẮT nên không hiện` : reason }))
     }
-    if (!type || !enabledRef.current) return
+    if (!type || !enabled) return
     void Notifications.scheduleNotificationAsync({
       content: {
         title: 'Bạn đang ngồi sai',

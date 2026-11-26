@@ -7,7 +7,7 @@ import { NotificationSettings } from '@/components/NotificationSettings'
 import { Screen } from '@/components/Screen'
 import { Button, Card, SectionTitle } from '@/components/ui'
 import { roleLabel } from '@/lib/labels'
-import { colors, space, text } from '@/theme/tokens'
+import { text } from '@/theme/tokens'
 
 export default function SettingsScreen() {
   const { user, logout } = useAuth()
@@ -65,5 +65,4 @@ function Row({ label, value }: { label: string; value: string }) {
 const styles = StyleSheet.create({
   row: { gap: 2 },
   value: { flexShrink: 1 },
-  hint: { flexDirection: 'row', gap: space.sm, alignItems: 'center' },
 })
