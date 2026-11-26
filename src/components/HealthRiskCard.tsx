@@ -15,7 +15,7 @@ export function HealthRiskCard() {
 
   let body: string
   if (q.isPending) body = 'Đang tải…'
-  else if (q.error) body = 'Chưa tải được cảnh báo nguy cơ. Chạm để thử lại.'
+  else if (q.error) body = 'Chưa tải được cảnh báo nguy cơ.'
   else if (q.data?.status === 'INSUFFICIENT_DATA') body = 'Chưa đủ dữ liệu 7 ngày để đánh giá. Hãy dùng Desktop App khi làm việc.'
   else if (elevated) body = top.risk.vi
   else body = 'Chưa có nguy cơ nào vượt ngưỡng trong 7 ngày qua.'

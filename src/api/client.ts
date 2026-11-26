@@ -72,12 +72,14 @@ function rotateAccessToken(): Promise<string> {
       if (session !== tokenStore.getSessionGeneration()) throw new CanceledError('Session changed')
       // Ghi refresh token mới xuống SecureStore xong mới trả access token: tắt app giữa chừng vẫn còn token hợp lệ.
       await tokenStore.setTokens(data)
+      connectivity.report(true)
       return data.accessToken
     })()
       .catch((err) => {
         if (signingOut || session !== tokenStore.getSessionGeneration()) throw err
         // Lỗi mạng và 5xx (kể cả 503 ORGANIZATION_UNAVAILABLE): giữ phiên, để lần sau thử lại.
         // 400/401/403: phiên đã hết. Backend trả 401 cả khi tổ chức tạm ngưng (không tiết lộ), nên không phân biệt được.
+        if (isAxiosError(err) && !isCancel(err)) connectivity.report(!!err.response)
         const status = isAxiosError(err) ? err.response?.status : undefined
         if (status === 400 || status === 401 || status === 403) {
           const code = (err.response?.data as { code?: string } | undefined)?.code

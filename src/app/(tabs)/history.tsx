@@ -48,7 +48,7 @@ export default function HistoryScreen() {
   const refresh = useCallback(async () => {
     setRefreshing(true)
     try {
-      await q.refetch()
+      await q.refresh()
     } finally {
       setRefreshing(false)
     }
@@ -87,7 +87,7 @@ export default function HistoryScreen() {
         q.isPending ? (
           <LoadingState />
         ) : q.error ? (
-          <ErrorState message={`Không tải được lịch sử: ${q.error.message}`} onRetry={() => q.refetch()} />
+          <ErrorState message={`Không tải được lịch sử: ${q.error.message}`} onRetry={q.refresh} />
         ) : (
           <Card>
             <EmptyState
@@ -102,11 +102,11 @@ export default function HistoryScreen() {
         q.isFetchingNextPage ? (
           <ActivityIndicator color={colors.primary} style={{ margin: space.lg }} />
         ) : q.error && items.length > 0 ? (
-          <ErrorState message={`Không tải thêm được: ${q.error.message}`} onRetry={() => q.fetchNextPage()} />
+          <ErrorState message={`Không tải thêm được: ${q.error.message}`} onRetry={q.loadMore} />
         ) : undefined
       }
       onEndReached={() => {
-        if (q.hasNextPage && !q.isFetchingNextPage && !q.error) void q.fetchNextPage()
+        if (q.hasNextPage && !q.isFetching && !q.error) void q.loadMore()
       }}
       onEndReachedThreshold={0.4}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} colors={[colors.primary]} />}

@@ -6,12 +6,13 @@ import { authApi } from '@/api/auth'
 import { onSessionExpired, refreshAccessToken, revokeCurrentSession } from '@/api/client'
 import { tokenStore } from '@/api/tokenStore'
 import {
-  ApiError,
+  MSG_SESSION_ENDED,
   MSG_ORG_UNAVAILABLE,
   ORGANIZATION_INACTIVE,
   ORGANIZATION_UNAVAILABLE,
   toApiError,
 } from '@/lib/errors'
+import { connectivity } from '@/lib/connectivity'
 import type { SessionUser } from '@/lib/types'
 import { disconnectRealtime, reconnectIfNeeded } from '@/realtime/socket'
 import { AuthContext, type AuthStatus } from './context'
@@ -29,51 +30,82 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStatus('anonymous')
   }, [queryClient])
 
-  // Mở app: có refresh token thì lấy access token mới + /auth/me, không thì về màn đăng nhập.
+  useEffect(() =>
+    onSessionExpired((end) => {
+      setNotice((prev) => end.notice ?? prev)
+      reset()
+    }), [reset])
+
+  // Phiên lưu trên máy chỉ vào vùng đã đăng nhập sau khi máy chủ xác nhận lại.
   useEffect(() => {
     let cancelled = false
-    ;(async () => {
-      await tokenStore.load()
-      const stored = tokenStore.getUser()
-      if (!tokenStore.getRefreshToken() || !stored) {
-        if (!cancelled) setStatus('anonymous')
+    let loaded = false
+    let finished = false
+    let running = false
+    let retryTimer: ReturnType<typeof setTimeout> | undefined
+
+    async function restore() {
+      if (!loaded || running || cancelled || finished) return
+      if (!tokenStore.getRefreshToken()) {
+        finished = true
+        setStatus('anonymous')
         return
       }
+      clearTimeout(retryTimer)
+      running = true
+      const generation = tokenStore.getSessionGeneration()
       try {
-        await refreshAccessToken()
-        let current = stored
-        try {
-          current = await authApi.me()
-          await tokenStore.setUser(current)
-        } catch (e) {
-          // 401: phiên hỏng; 403 ORGANIZATION_INACTIVE: tổ chức tạm ngưng (client.ts đã xóa token và đặt thông báo)
-          if (e instanceof ApiError && (e.status === 401 || e.code === ORGANIZATION_INACTIVE)) throw e
-        }
-        if (!cancelled) {
-          setUser(current)
-          setStatus('authenticated')
-        }
-      } catch (e) {
+        if (!tokenStore.getAccessToken()) await refreshAccessToken()
+        const current = await authApi.me()
+        if (cancelled || generation !== tokenStore.getSessionGeneration()) return
+        await tokenStore.setUser(current)
+        if (cancelled || generation !== tokenStore.getSessionGeneration()) return
+        finished = true
+        setUser(current)
+        setNotice(null)
+        setStatus('authenticated')
+      } catch (error) {
         if (cancelled) return
-        // 503: chưa kiểm được tổ chức (phiên vẫn còn) – nói rõ để người dùng thử lại thay vì tưởng bị đăng xuất.
-        if (toApiError(e).code === ORGANIZATION_UNAVAILABLE) setNotice(MSG_ORG_UNAVAILABLE)
-        // Mất mạng lúc mở app: refresh token còn nguyên trong SecureStore, người dùng đăng nhập lại cũng được.
-        setStatus('anonymous')
+        if (generation !== tokenStore.getSessionGeneration()) {
+          finished = true
+          return
+        }
+        const failure = toApiError(error)
+        if (failure.status === 401 || failure.code === ORGANIZATION_INACTIVE) {
+          finished = true
+          await tokenStore.clear()
+          if (cancelled) return
+          setNotice(MSG_SESSION_ENDED)
+          reset()
+          return
+        }
+        setNotice(failure.code === ORGANIZATION_UNAVAILABLE ? MSG_ORG_UNAVAILABLE : null)
+        setStatus('restoring')
+        retryTimer = setTimeout(restore, 15_000)
+      } finally {
+        running = false
       }
-    })()
+    }
+
+    const unsubscribe = connectivity.subscribe(() => {
+      if (!connectivity.isOffline()) void restore()
+    })
+    const subscription = AppState.addEventListener('change', (next) => {
+      if (next === 'active') void restore()
+    })
+    void tokenStore.load().then(() => {
+      if (cancelled) return
+      loaded = true
+      if (tokenStore.getRefreshToken()) setStatus('restoring')
+      void restore()
+    })
     return () => {
       cancelled = true
+      clearTimeout(retryTimer)
+      unsubscribe()
+      subscription.remove()
     }
-  }, [])
-
-  useEffect(
-    () =>
-      onSessionExpired((end) => {
-        setNotice((prev) => end.notice ?? prev)
-        reset()
-      }),
-    [reset],
-  )
+  }, [reset])
 
   // Về foreground: nối lại Socket.IO nếu bị cắt khi app ở nền.
   useEffect(() => {

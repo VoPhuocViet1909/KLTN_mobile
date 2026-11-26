@@ -1,6 +1,7 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Text, View } from 'react-native'
-import { useMyHeatmap, useMyTimeseries, type HeatmapCell } from '@/api/stats'
+import { POSTURE_CLASSES_QUERY_KEY, useMyHeatmap, useMyTimeseries, type HeatmapCell } from '@/api/stats'
 import { BadMinutesBars, DayDetail, fillDays, ScoreLine } from '@/components/charts/ScoreTrend'
 import { HabitHeatmap } from '@/components/charts/HabitHeatmap'
 import { hourRange, WEEKDAY_LABEL } from '@/components/charts/heatmapScale'
@@ -23,6 +24,7 @@ export default function StatsScreen() {
   const [days, setDays] = useState(7)
   const [weeks, setWeeks] = useState(4)
   const [picked, setPicked] = useState<number | null>(null)
+  const queryClient = useQueryClient()
   const series = useMyTimeseries(days, 'day')
   const heatmap = useMyHeatmap(weeks)
 
@@ -36,7 +38,11 @@ export default function StatsScreen() {
     <Screen
       title="Thống kê"
       subtitle="Xu hướng và thói quen ngồi của bạn."
-      onRefresh={() => Promise.all([series.refetch(), heatmap.refetch()])}>
+      onRefresh={() => Promise.all([
+        series.refetch(),
+        heatmap.refetch(),
+        queryClient.invalidateQueries({ queryKey: POSTURE_CLASSES_QUERY_KEY }),
+      ])}>
       <Segmented
         label="Khoảng thời gian xu hướng"
         options={DAY_RANGES}

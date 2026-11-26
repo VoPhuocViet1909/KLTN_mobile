@@ -102,9 +102,11 @@ export interface OrgHealthRisks {
   note: string | null
 }
 
+export const MY_HEALTH_RISKS_QUERY_KEY = ['insights', 'me'] as const
+
 export function useMyHealthRisks(period: Period) {
   return useQuery({
-    queryKey: ['insights', 'me', period],
+    queryKey: [...MY_HEALTH_RISKS_QUERY_KEY, period],
     queryFn: () => request<MyHealthRisks>({ url: '/insights/me/health-risks', params: { period } }),
     staleTime: 60_000,
   })

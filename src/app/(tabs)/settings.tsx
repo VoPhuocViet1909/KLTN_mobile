@@ -41,6 +41,7 @@ export default function SettingsScreen() {
       <NotificationSettings />
       <SectionTitle>Cấu hình cá nhân</SectionTitle>
       <ConfigForm
+        version={config.data?.version}
         personal={config.data?.personal}
         organization={config.data?.organization}
         error={config.error}

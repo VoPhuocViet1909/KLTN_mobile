@@ -9,6 +9,7 @@ import { colors, fonts, radius, space, text } from '@/theme/tokens'
 import { Button, Card, ErrorState, LoadingState, SectionTitle } from './ui'
 
 interface Props {
+  version: number | undefined
   /** Chỉ các khóa cá nhân (`details.personal`), không dùng cấu hình đã gộp. */
   personal: ConfigValues | undefined
   /** Khóa tổ chức đặt, để hiện "Theo tổ chức" khi kế thừa. */
@@ -16,7 +17,7 @@ interface Props {
   error: Error | null
   isPending: boolean
   onRetry: () => void
-  save: { mutate: (body: ConfigValues, o: { onSuccess: () => void; onError: (e: unknown) => void }) => void; isPending: boolean }
+  save: { mutate: (input: { body: ConfigValues; expectedVersion: number }, o: { onSuccess: () => void; onError: (e: unknown) => void }) => void; isPending: boolean }
 }
 
 /**
@@ -24,9 +25,9 @@ interface Props {
  * PUT thay toàn bộ phần cá nhân nên luôn gửi lại khóa hiệu chỉnh camera; nhận `config` realtime khi đang sửa thì
  * báo xung đột và KHÔNG ghi đè bản nháp, chặn lưu bản cũ cho tới khi bấm "Dùng giá trị mới".
  */
-export function ConfigForm({ personal, organization, error, isPending, onRetry, save }: Props) {
+export function ConfigForm({ version, personal, organization, error, isPending, onRetry, save }: Props) {
   const baseline = useMemo(() => draftFromServer(personal), [personal])
-  const serverKey = useMemo(() => stableKey(personal) + stableKey(organization), [personal, organization])
+  const serverKey = useMemo(() => JSON.stringify(version) + stableKey(personal) + stableKey(organization), [version, personal, organization])
 
   const [draft, setDraft] = useState<Draft | null>(null)
   const [draftBase, setDraftBase] = useState('')
@@ -38,7 +39,8 @@ export function ConfigForm({ personal, organization, error, isPending, onRetry, 
   const current = draft ?? baseline
   const changes = draft ? changedKeys(draft, baseline) : []
   const dirty = changes.length > 0
-  const conflict = draft !== null && draftBase !== serverKey
+  const [rejectedVersion, setRejectedVersion] = useState<number | null>(null)
+  const conflict = (draft !== null && draftBase !== serverKey) || rejectedVersion === version
   const clientErrors = useMemo(() => validateDraft(current, organization), [current, organization])
   const errors = { ...serverErrors, ...clientErrors }
   const hasErrors = Object.keys(clientErrors).length > 0
@@ -69,8 +71,9 @@ export function ConfigForm({ personal, organization, error, isPending, onRetry, 
   }
 
   function send(body: ConfigValues, done: string) {
+    if (version === undefined || conflict || save.isPending) return
     setFormError(null)
-    save.mutate(body, {
+    save.mutate({ body, expectedVersion: version }, {
       onSuccess: () => {
         discard()
         setSaved(done)
@@ -79,7 +82,10 @@ export function ConfigForm({ personal, organization, error, isPending, onRetry, 
         const err = toApiError(e)
         const mapped: Record<string, string> = {}
         let general: string | null = null
-        if (err.code === 'VALIDATION_FAILED' && Object.keys(err.fieldErrors).length > 0) {
+        if (err.code === 'RESOURCE_VERSION_CONFLICT') {
+          setRejectedVersion(version)
+          general = 'Cấu hình đã đổi ở nơi khác. Hãy tải bản mới trước khi lưu.'
+        } else if (err.code === 'VALIDATION_FAILED' && Object.keys(err.fieldErrors).length > 0) {
           for (const [field, message] of Object.entries(err.fieldErrors)) {
             const key = field.split('.').pop() ?? field
             if (key in FIELD_BY_KEY) mapped[key] = translateFieldError(FIELD_BY_KEY[key], message)
@@ -106,6 +112,7 @@ export function ConfigForm({ personal, organization, error, isPending, onRetry, 
   }
 
   if (isPending) return <LoadingState label="Đang tải cấu hình…" />
+  if (version === undefined && !error) return <ErrorState message="Máy chủ chưa cung cấp phiên bản cấu hình để lưu an toàn." onRetry={onRetry} />
   if (error) return <ErrorState message={`Không tải được cấu hình: ${error.message}`} onRetry={onRetry} />
 
   return (
@@ -115,8 +122,14 @@ export function ConfigForm({ personal, organization, error, isPending, onRetry, 
       {conflict && (
         <Card accessibilityRole="alert">
           <Text style={text.bodyStrong}>Cấu hình vừa thay đổi ở nơi khác</Text>
-          <Text style={text.caption}>Các thay đổi chưa lưu của bạn chưa bị ghi đè. Lưu đang bị khóa để tránh ghi đè bản mới.</Text>
-          <Button label="Dùng giá trị mới" variant="outline" onPress={discard} />
+          <Text style={text.caption}>
+            {draft ? 'Bản nháp vẫn còn. Hãy tải cấu hình mới trước khi tiếp tục.' : 'Hãy tải cấu hình mới trước khi xóa tùy chỉnh.'}
+          </Text>
+          {rejectedVersion === version ? (
+            <Button label="Tải giá trị mới" variant="outline" onPress={onRetry} />
+          ) : (
+            <Button label="Dùng giá trị mới" variant="outline" onPress={discard} />
+          )}
         </Card>
       )}
 

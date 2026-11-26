@@ -42,7 +42,13 @@ export function vnDayStarts(days: number, now = new Date()) {
 
 /** Khoảng "hôm nay": từ 00:00 giờ Việt Nam đến bây giờ. */
 export function vnToday(now = new Date()) {
-  return { from: vnDayStarts(0, now)[0], to: now.toISOString() }
+  const from = vnDayStarts(0, now)[0]
+  // API dùng khoảng nửa mở có độ dài dương, kể cả tại đúng thời điểm đổi ngày.
+  return { from, to: new Date(Math.max(now.getTime(), Date.parse(from) + 1)).toISOString() }
+}
+
+export function msUntilNextVnDay(now = new Date()) {
+  return Date.parse(vnDayStarts(0, now)[0]) + DAY - now.getTime()
 }
 
 /** 45 -> "45 phút", 150 -> "2,5 giờ". Dưới 90 phút hiện phút để số nhỏ không thành "0 giờ". */
