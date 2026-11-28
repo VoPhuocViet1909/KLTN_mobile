@@ -3,9 +3,9 @@ import { Screen } from './Screen'
 import { Card, EmptyState } from './ui'
 
 /** Màn 403: vào được đường dẫn nhưng không đủ quyền (vd. mở trực tiếp link màn "Tổ chức" bằng tài khoản không phải ORG_ADMIN). */
-export function Forbidden({ title = 'Tổ chức' }: { title?: string }) {
+export function Forbidden({ title = 'Tổ chức', back }: { title?: string; back?: string }) {
   return (
-    <Screen title={title}>
+    <Screen title={title} back={back}>
       <Card>
         <EmptyState
           icon={ShieldOff}
