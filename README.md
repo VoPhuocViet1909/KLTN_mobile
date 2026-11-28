@@ -38,8 +38,11 @@ backend để có tài khoản thử; **email và mật khẩu demo nằm ở `A
 | Hôm nay | xong: trạng thái quan sát realtime từ Desktop App + số liệu hôm nay |
 | Lịch sử | xong: cảnh báo + phiên làm việc, 7/30/92 ngày, lọc loại, cuộn vô hạn |
 | Thống kê | xong: điểm theo ngày, phút ngồi sai, heatmap thói quen 1/4/12 tuần |
-| Tổ chức (ORG_ADMIN) | xong: ai đang ngồi sai (realtime), tổng quan 7/30 ngày, xu hướng, danh sách nhân viên → cảnh báo của từng người. Role khác không thấy tab; mở link trực tiếp thì hiện màn 403 |
+| Tổ chức (ORG_ADMIN) | xong: ai đang ngồi sai (realtime), tổng quan 7/30 ngày, xu hướng, danh sách nhân viên → cảnh báo của từng người, heatmap thói quen cả tổ chức, màn Nguy cơ sức khỏe tổ chức (cả tổ chức hoặc từng phòng ban; nhóm dưới 3 người đủ dữ liệu hiện SUPPRESSED, không số) và màn Báo cáo phòng ban theo tuần (13 tuần gần nhất, giờ Việt Nam; nhóm nhỏ/UNKNOWN ẩn hoặc tách riêng như web). Role khác không thấy tab; mở link trực tiếp thì hiện màn 403 |
 | Cài đặt | xong: tài khoản, công tắc thông báo, form cấu hình cá nhân (kế thừa tổ chức), đăng xuất |
+
+Kiểm màn Tổ chức với backend thật: `node dev/check-org.mjs`; riêng nguy cơ sức khỏe/báo cáo phòng ban/heatmap tổ chức:
+`ADMIN_EMAIL=... ADMIN_PASSWORD=... node --experimental-strip-types dev/check-org-health.mjs` (cần backend chạy, SYS_ADMIN, python).
 
 ## Khôi phục phiên và dữ liệu
 

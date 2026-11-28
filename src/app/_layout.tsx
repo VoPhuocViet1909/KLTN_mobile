@@ -63,6 +63,8 @@ function Routes() {
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="member/[userId]" />
             <Stack.Screen name="health-risks" />
+            <Stack.Screen name="org-health-risks" />
+            <Stack.Screen name="org-departments" />
           </Stack.Protected>
           <Stack.Protected guard={status === 'anonymous'}>
             <Stack.Screen name="login" />

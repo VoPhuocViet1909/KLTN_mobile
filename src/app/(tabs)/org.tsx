@@ -1,12 +1,14 @@
 // Dựa trên GIT_frontend/src/pages/OrgOverviewPage.tsx + OrgMembersPage.tsx (commit 9d5677d).
+import { useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'expo-router'
-import { ChevronRight, ShieldCheck, Users } from 'lucide-react-native'
+import { CalendarRange, ChevronRight, ShieldAlert, ShieldCheck, Users } from 'lucide-react-native'
 import { useMemo, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
-import { useOrgMembers, useOrgSummary, useOrgTimeseries, type OrgMember } from '@/api/org'
+import { useOrgHeatmap, useOrgMembers, useOrgSummary, useOrgTimeseries, type OrgMember } from '@/api/org'
 import { sumAlerts } from '@/api/stats'
 import { displayUser, useUserDirectory } from '@/api/users'
 import { isOrgAdmin, useAuth } from '@/auth/context'
+import { HabitHeatmap } from '@/components/charts/HabitHeatmap'
 import { BadMinutesBars, DayDetail, fillDays, ScoreLine } from '@/components/charts/ScoreTrend'
 import { Forbidden } from '@/components/Forbidden'
 import { Screen } from '@/components/Screen'
@@ -33,11 +35,14 @@ export default function OrgScreen() {
 
 function Org() {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const [days, setDays] = useState(7)
   const [picked, setPicked] = useState<number | null>(null)
   const summary = useOrgSummary(days)
   const series = useOrgTimeseries(days, 'day')
   const members = useOrgMembers(days)
+  const weeks = Math.ceil(days / 7)
+  const heatmap = useOrgHeatmap(weeks)
   // Tra tên: lỗi thì danh sách rơi về mã rút gọn, không báo lỗi riêng.
   const directory = useUserDirectory()
   const nameOf = (userId: string) => displayUser(directory.data, userId)
@@ -57,7 +62,7 @@ function Org() {
     <Screen
       title="Tổ chức"
       subtitle="Sức khỏe tư thế của cả tổ chức."
-      onRefresh={() => Promise.all([summary.refetch(), series.refetch(), members.refetch(), directory.refetch()])}>
+      onRefresh={() => Promise.all([summary.refetch(), series.refetch(), members.refetch(), directory.refetch(), heatmap.refetch(), queryClient.invalidateQueries({ queryKey: ['insights', 'org'] }), queryClient.invalidateQueries({ queryKey: ['stats', 'org', 'department-report'] })])}>
       <Card>
         <SectionTitle>Ai đang ngồi sai lúc này</SectionTitle>
         {!connected ? (
@@ -145,6 +150,35 @@ function Org() {
         )}
       </Card>
 
+      <NavCard
+        icon={ShieldAlert}
+        title="Nguy cơ sức khỏe tổ chức"
+        hint="Số người ở từng mức nguy cơ, theo cả tổ chức hoặc từng phòng ban (7 hoặc 30 ngày)."
+        onPress={() => router.push('/org-health-risks')}
+      />
+      <NavCard
+        icon={CalendarRange}
+        title="Báo cáo phòng ban theo tuần"
+        hint="Thời gian có mặt, tỷ lệ ngồi sai và cảnh báo của từng phòng ban trong một tuần đã kết thúc."
+        onPress={() => router.push('/org-departments')}
+      />
+
+      <Card>
+        <SectionTitle>Thói quen cả tổ chức</SectionTitle>
+        {heatmap.isPending ? (
+          <LoadingState />
+        ) : heatmap.error ? (
+          <ErrorState message={`Không tải được bản đồ thói quen: ${heatmap.error.message}`} onRetry={() => heatmap.refetch()} />
+        ) : !heatmap.data.some((c) => c.meanScore !== null) ? (
+          <EmptyState title={`Chưa có dữ liệu trong ${weeks} tuần qua.`} />
+        ) : (
+          <>
+            <HabitHeatmap cells={heatmap.data} />
+            <Text style={text.caption}>Điểm tư thế trung bình cả tổ chức theo thứ và giờ, {weeks} tuần gần nhất.</Text>
+          </>
+        )}
+      </Card>
+
       <SectionTitle>Nhân viên</SectionTitle>
       <Text style={text.caption}>Sắp theo thời gian ngồi sai nhiều nhất. Chạm một người để xem cảnh báo của họ.</Text>
       {members.isPending ? (
@@ -177,6 +211,23 @@ function Org() {
   )
 }
 
+function NavCard({ icon: Icon, title, hint, onPress }: { icon: typeof ShieldAlert; title: string; hint: string; onPress: () => void }) {
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={`${title}. ${hint}`} onPress={onPress} style={({ pressed }) => pressed && { opacity: 0.8 }}>
+      <Card>
+        <View style={styles.navRow}>
+          <Icon size={20} color={colors.primary} />
+          <View style={styles.flex}>
+            <Text style={text.section}>{title}</Text>
+            <Text style={text.caption}>{hint}</Text>
+          </View>
+          <ChevronRight size={18} color={colors.mutedForeground} />
+        </View>
+      </Card>
+    </Pressable>
+  )
+}
+
 function MemberRow({ member: m, name, state, onPress }: { member: OrgMember; name: string; state?: ObservationState; onPress: () => void }) {
   const badPct = m.presenceMinutes > 0 ? Math.round((m.badMinutes / m.presenceMinutes) * 100) : null
   const alerts = sumAlerts(m.alerts)
@@ -204,6 +255,7 @@ function MemberRow({ member: m, name, state, onPress }: { member: OrgMember; nam
 
 const styles = StyleSheet.create({
   flex: { flexShrink: 1, flex: 1, gap: 2 },
+  navRow: { flexDirection: 'row', alignItems: 'center', gap: space.md },
   counts: { flexDirection: 'row', flexWrap: 'wrap', columnGap: space.xl, rowGap: space.sm },
   count: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   badRow: { gap: 2, paddingTop: space.sm, borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth * 2 },

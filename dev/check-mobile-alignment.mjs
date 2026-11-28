@@ -5,6 +5,8 @@ import { createServer } from 'node:http'
 import { registerHooks } from 'node:module'
 import { InfiniteQueryObserver, QueryClient } from '@tanstack/react-query'
 import { msUntilNextVnDay, vnToday } from '../src/lib/time.ts'
+import { canGoEarlier, canGoLater, defaultReportWeek, formatWeekRange, oldestReportWeek, shiftWeek, vnWeekStart } from '../src/lib/week.ts'
+import { badRatioText, hiddenMessage, reportHidden, rowLabel, suppressedHealthMessage } from '../src/lib/departmentReport.ts'
 import { uniqueHistoryRows } from '../src/lib/historyRows.ts'
 import { currentObservations, latestObservationByUser, newerObservation, validObservation } from '../src/realtime/observation.ts'
 
@@ -33,6 +35,35 @@ const updated = { ...alert, endedAt: '2026-11-26T03:01:00.000Z' }
 const otherType = { ...alert, alertType: 'TOO_CLOSE' }
 assert.deepEqual(uniqueHistoryRows([{ items: [alert] }, { items: [updated, otherType] }]), [updated, otherType])
 console.log('PASS trang cảnh báo chồng nhau không tạo dòng trùng')
+// Tuần báo cáo phòng ban: thứ Hai 00:00 giờ Việt Nam (UTC+7)
+assert.equal(vnWeekStart(new Date('2026-11-28T05:00:00Z')), '2026-11-23') // Thứ Bảy 28/11 -> Thứ Hai 23/11
+assert.equal(vnWeekStart(new Date('2026-11-22T16:59:59Z')), '2026-11-16') // Chủ Nhật 23:59:59 VN vẫn là tuần 16/11
+assert.equal(vnWeekStart(new Date('2026-11-22T17:00:00Z')), '2026-11-23') // đúng 00:00 thứ Hai VN sang tuần mới
+assert.equal(vnWeekStart(new Date('2026-11-23T00:00:00Z')), '2026-11-23') // thứ Hai 07:00 VN
+assert.equal(vnWeekStart(new Date('2026-12-31T20:00:00Z')), '2026-12-28') // 03:00 ngày 1/1/2027 VN (thứ Sáu)
+assert.equal(shiftWeek('2026-12-28', 1), '2027-01-04')
+assert.equal(shiftWeek('2026-03-02', -1), '2026-02-23')
+const nowW = new Date('2026-11-28T05:00:00Z')
+assert.equal(defaultReportWeek(nowW), '2026-11-16')
+assert.equal(oldestReportWeek(nowW), '2026-08-24') // 13 tuần trước tuần 23/11
+assert.equal(canGoEarlier('2026-08-24', nowW), false)
+assert.equal(canGoEarlier('2026-08-31', nowW), true)
+assert.equal(canGoLater('2026-11-16', nowW), false) // tuần hiện tại chưa kết thúc, không chọn được
+assert.equal(canGoLater('2026-11-09', nowW), true)
+assert.equal(formatWeekRange('2026-12-28'), '28/12 – 03/01/2027')
+assert.equal(formatWeekRange('2026-11-16'), '16/11 – 22/11/2026')
+assert.equal(rowLabel({ group: 'UNKNOWN', departmentId: null }, new Map()), 'Chưa có lịch sử / cắt mốc chuyển')
+assert.equal(rowLabel({ group: 'UNASSIGNED', departmentId: null }, new Map()), 'Chưa gán phòng ban')
+assert.equal(rowLabel({ group: 'DEPARTMENT', departmentId: 'abcdef12-0000' }, new Map([['abcdef12-0000', 'Kế toán']])), 'Kế toán')
+assert.equal(rowLabel({ group: 'DEPARTMENT', departmentId: 'abcdef12-0000' }, new Map()), 'Phòng ban abcdef12')
+assert.equal(badRatioText(null), 'Chưa đủ timing')
+assert.equal(badRatioText(0.2), '20.0%')
+assert.equal(reportHidden({ status: 'SUPPRESSED' }) && reportHidden({ status: 'OVERLAPPING_WINDOWS' }), true)
+assert.equal(reportHidden({ status: 'OK' }) || reportHidden({ status: 'NO_DATA' }), false)
+assert.match(hiddenMessage({ status: 'SUPPRESSED', minimumGroupSize: 5 }), /dưới 5 người/)
+assert.equal(suppressedHealthMessage(3), 'Nhóm dưới 3 người đủ dữ liệu, ẩn để bảo vệ riêng tư.')
+console.log('PASS tuần báo cáo phòng ban theo giờ Việt Nam và nhãn dòng báo cáo')
+
 
 const midnight = Date.parse('2026-11-25T17:00:00Z')
 assert.equal(msUntilNextVnDay(new Date(midnight - 1)), 1)
