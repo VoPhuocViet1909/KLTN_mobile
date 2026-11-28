@@ -4,7 +4,32 @@ import { useQuery } from '@tanstack/react-query'
 import { lastDays } from '@/lib/time'
 import { useHistoryPages, type AlertItem } from './alerts'
 import { request } from './client'
-import type { Bucket, Summary } from './stats'
+import type { Bucket, HeatmapCell, Summary } from './stats'
+
+/** Heatmap thói quen cả tổ chức (team-sync 4.6): đúng 168 ô như `/stats/me/heatmap`, `weeks` 1–12. Chép từ web `useOrgHeatmap` (a500d43). */
+export function useOrgHeatmap(weeks: number, enabled = true) {
+  return useQuery({
+    queryKey: ['stats', 'org', 'heatmap', weeks],
+    queryFn: () => request<HeatmapCell[]>({ url: '/stats/org/heatmap', params: { weeks } }),
+    enabled,
+  })
+}
+
+export interface Department {
+  id: string
+  organizationId: string
+  name: string
+  active: boolean
+}
+
+/** Backend trả mảng thuần (không phân trang). Dùng để tra tên và chọn phòng ban. */
+export function useDepartments(orgId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['org', orgId, 'departments'],
+    queryFn: () => request<Department[]>({ url: `/organizations/${encodeURIComponent(orgId)}/departments` }),
+    enabled,
+  })
+}
 
 export function useOrgSummary(days: number, enabled = true) {
   return useQuery({

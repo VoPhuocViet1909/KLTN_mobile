@@ -92,6 +92,8 @@ export interface GroupRisk {
 export interface OrgHealthRisks {
   period: Period
   kbVersion: string
+  /** backend có trả; web chưa khai báo */
+  generatedAt?: string
   disclaimer: string
   status: 'OK' | 'SUPPRESSED'
   /** null khi nhóm quá nhỏ (không lộ cả số người) */
@@ -103,6 +105,26 @@ export interface OrgHealthRisks {
 }
 
 export const MY_HEALTH_RISKS_QUERY_KEY = ['insights', 'me'] as const
+
+export const ORG_HEALTH_RISKS_QUERY_KEY = ['insights', 'org'] as const
+
+/**
+ * ORG_ADMIN: số người ở từng mức nguy cơ của cả tổ chức (departmentId undefined) hoặc một phòng ban
+ * (chép từ web `orgHealthRisksQuery`, commit a500d43). DTO không kèm nguồn nghiên cứu.
+ */
+export function useOrgHealthRisks(period: Period, departmentId: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: [...ORG_HEALTH_RISKS_QUERY_KEY, period, departmentId ?? 'all'],
+    queryFn: () =>
+      request<OrgHealthRisks>({
+        url: '/insights/org/health-risks',
+        params: departmentId ? { period, departmentId } : { period },
+      }),
+    staleTime: 60_000,
+    enabled,
+    retry: false,
+  })
+}
 
 export function useMyHealthRisks(period: Period) {
   return useQuery({
